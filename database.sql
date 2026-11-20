@@ -6,6 +6,7 @@ DROP TABLE IF EXISTS injury_cases;
 DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS roles;
 DROP SEQUENCE IF EXISTS case_ref_seq;
+DROP SEQUENCE IF EXISTS patient_code_seq;
 
 CREATE TABLE roles (
     role_id     SERIAL PRIMARY KEY,
@@ -43,7 +44,7 @@ CREATE TABLE injury_cases (
     treatment      VARCHAR(60),
     outcome        VARCHAR(60) NOT NULL,
     notes          TEXT,
-    recorded_by    INT REFERENCES users(user_id),
+    recorded_by    INT REFERENCES users(user_id) ON DELETE SET NULL,
     created_at     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at     TIMESTAMP
 );
@@ -54,8 +55,9 @@ CREATE INDEX idx_cases_patient ON injury_cases (patient_code);
 CREATE INDEX idx_cases_patient_name ON injury_cases (patient_name);
 
 -- Roles. Permissions are comma-separated and checked by the PHP code.
+-- Valid permissions: view, create, export, manage_users, delete.
 INSERT INTO roles (role_name, description, permissions) VALUES
-    ('admin',   'Full access, including user accounts', 'view,create,export,manage_users'),
+    ('admin',   'Full access, including users, roles and deletion', 'view,create,export,manage_users,delete'),
     ('officer', 'Records injury cases and edits them',  'view,create'),
     ('records', 'Searches cases and prepares reports',  'view,export'),
     ('viewer',  'Read-only access',                     'view');

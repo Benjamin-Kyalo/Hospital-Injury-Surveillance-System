@@ -59,8 +59,25 @@ if not errorlevel 1 (
     "%PGBIN%\psql.exe" -h 127.0.0.1 -p %PGPORT% -U postgres -d HISS -w -f "%APP%migration-add-patient-code.sql"
 )
 
-echo Starting PHP on http://localhost:%WEBPORT% ...
-start "HISS PHP server" /MIN "%PHP%" -S 127.0.0.1:%WEBPORT% -t "%APP%"
+"%PGBIN%\psql.exe" -h 127.0.0.1 -p %PGPORT% -U postgres -d HISS -w -tAc "select count(*) from roles where role_name='admin' and permissions !~ '(^|,)delete(,|$)'" | findstr /r /c:"^1$" >nul
+if not errorlevel 1 (
+    echo Adding the delete permission to the admin role ...
+    "%PGBIN%\psql.exe" -h 127.0.0.1 -p %PGPORT% -U postgres -d HISS -w -f "%APP%migration-add-delete-permission.sql"
+)
+
+"%PGBIN%\psql.exe" -h 127.0.0.1 -p %PGPORT% -U postgres -d HISS -w -tAc "select count(*) from pg_constraint where conname='injury_cases_recorded_by_fkey' and confdeltype <> 'n'" | findstr /r /c:"^1$" >nul
+if not errorlevel 1 (
+    echo Updating case authorship links ...
+    "%PGBIN%\psql.exe" -h 127.0.0.1 -p %PGPORT% -U postgres -d HISS -w -f "%APP%migration-fix-recorded-by-delete.sql"
+)
+
+netstat -ano | findstr /c:"127.0.0.1:%WEBPORT%" | findstr /c:"LISTENING" >nul
+if not errorlevel 1 (
+    echo PHP is already listening on http://localhost:%WEBPORT% - nothing to start.
+) else (
+    echo Starting PHP on http://localhost:%WEBPORT% ...
+    start "HISS PHP server" /MIN "%PHP%" -S 127.0.0.1:%WEBPORT% -t "%APP%"
+)
 
 echo.
 echo Ready. Open http://localhost:%WEBPORT%/ in your browser.

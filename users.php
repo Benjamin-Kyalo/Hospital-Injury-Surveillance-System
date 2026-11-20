@@ -34,6 +34,57 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     check_csrf();
 
     $post_action = (string) ($_POST['action'] ?? 'new');
+
+    // Delete is handled before the create/edit form so it can never fall through.
+    if ($post_action === 'delete') {
+        require_permission('delete');
+
+        $delete_id = (int) ($_POST['user_id'] ?? 0);
+        $me = current_user()['user_id'];
+
+        if ($delete_id <= 0) {
+            flash('error', 'No account was selected for deletion.');
+            redirect('users.php');
+        }
+        if ($delete_id === $me) {
+            flash('error', 'You cannot delete your own account.');
+            redirect('users.php');
+        }
+
+        $stmt = $pdo->prepare('SELECT u.username, r.role_name
+                               FROM users u JOIN roles r ON r.role_id = u.role_id
+                               WHERE u.user_id = :id');
+        $stmt->execute([':id' => $delete_id]);
+        $target = $stmt->fetch();
+        if (!$target) {
+            flash('error', 'That account could not be found. It may already have been deleted.');
+            redirect('users.php');
+        }
+
+        if ($target['role_name'] === 'admin') {
+            $admin_count = (int) $pdo->query("
+                SELECT COUNT(*) FROM users u
+                JOIN roles r ON r.role_id = u.role_id
+                WHERE r.role_name = 'admin'
+            ")->fetchColumn();
+            if ($admin_count <= 1) {
+                flash('error', 'This is the last administrator account. Add another admin before deleting it.');
+                redirect('users.php');
+            }
+        }
+
+        try {
+            // injury_cases.recorded_by is ON DELETE SET NULL, so recorded cases are kept.
+            $stmt = $pdo->prepare('DELETE FROM users WHERE user_id = :id');
+            $stmt->execute([':id' => $delete_id]);
+            flash('success', 'Account ' . $target['username'] . ' has been deleted. Its cases are kept.');
+        } catch (PDOException $e) {
+            error_log('User delete failed: ' . $e->getMessage());
+            flash('error', 'The account could not be deleted. Please try again.');
+        }
+        redirect('users.php');
+    }
+
     $user_id = (int) ($_POST['user_id'] ?? 0);
     $is_edit = $post_action === 'edit' && $user_id > 0;
     $show_form = true;
@@ -227,7 +278,23 @@ include __DIR__ . '/includes/header.php';
             </span>
           </td>
           <td><?= e(date('d M Y', strtotime($account['created_at']))) ?></td>
-          <td class="right"><a href="users.php?action=edit&id=<?= (int) $account['user_id'] ?>">Edit</a></td>
+          <td class="right">
+            <a href="users.php?action=edit&id=<?= (int) $account['user_id'] ?>">Edit</a>
+            <?php if (can('delete')): ?>
+              <?php if ((int) $account['user_id'] === current_user()['user_id']): ?>
+                &middot; <span class="muted">You</span>
+              <?php else: ?>
+                &middot;
+                <form method="post" action="users.php" class="inlineform"
+                      data-confirm="Delete account <?= e($account['username']) ?>? Cases they recorded are kept.">
+                  <?= csrf_field() ?>
+                  <input type="hidden" name="action" value="delete">
+                  <input type="hidden" name="user_id" value="<?= (int) $account['user_id'] ?>">
+                  <button type="submit" class="linkdelete">Delete</button>
+                </form>
+              <?php endif; ?>
+            <?php endif; ?>
+          </td>
         </tr>
       <?php endforeach; ?>
       </tbody>

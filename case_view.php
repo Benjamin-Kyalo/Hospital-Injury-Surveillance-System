@@ -70,6 +70,14 @@ include __DIR__ . '/includes/header.php';
   <?php if (can('create')): ?>
     <a class="btn primary" href="case_form.php?id=<?= (int) $case['case_id'] ?>">Edit this case</a>
   <?php endif; ?>
+  <?php if (can('delete')): ?>
+    <form method="post" action="case_delete.php" class="inlineform"
+          data-confirm="Delete case <?= e($case['case_reference']) ?> permanently? This cannot be undone.">
+      <?= csrf_field() ?>
+      <input type="hidden" name="case_id" value="<?= (int) $case['case_id'] ?>">
+      <button type="submit" class="btn danger">Delete this case</button>
+    </form>
+  <?php endif; ?>
   <a class="btn" href="cases.php">Back to cases</a>
 </p>
 

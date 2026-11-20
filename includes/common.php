@@ -251,3 +251,13 @@ $sex_options = [
     'Male'         => 'Male',
     'Female'       => 'Female',
 ];
+
+// Permissions that can be given to a role in roles.php.
+// Keep this list in step with the require_permission()/can() checks in the pages.
+$permission_options = [
+    'view'         => 'View cases and reports',
+    'create'       => 'Create and edit cases',
+    'export'       => 'Download CSV reports',
+    'manage_users' => 'Manage accounts and roles',
+    'delete'       => 'Delete cases, accounts and roles',
+];

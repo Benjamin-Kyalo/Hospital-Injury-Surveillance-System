@@ -8,7 +8,8 @@ From this folder, double-click **start-injury-surveillance.bat**. That script:
 
 1. checks your existing PostgreSQL service on port 5432,
 2. creates the `HISS` database and loads `database.sql` if the tables are missing,
-3. starts PHP's built-in web server on port 8000.
+3. applies any missing migrations without deleting existing data,
+4. starts PHP's built-in web server on port 8000.
 
 Then open **http://localhost:8000/** in your browser. Use **stop-injury-surveillance.bat** to stop the PHP server. Your PostgreSQL Windows service is left running.
 
@@ -16,45 +17,72 @@ To put the original demo records back, run **reset-database.bat**. It replaces t
 
 Do not close the small "HISS PHP server" window while using the site — closing it stops PHP.
 
+## Setting it up on your own PC
+
+See **[SETUP-NEW-PC.md](SETUP-NEW-PC.md)** for a complete step-by-step guide: install PostgreSQL, copy the folder (including `runtime\php`), change the password/ports if needed, run the app, and test every feature. See **HANDOVER.md** for the full technical handover.
+
 ## Accounts
 
 | Username | Password | Role | Can do |
 | --- | --- | --- | --- |
-| admin | Admin@123 | admin | everything, including user accounts and CSV |
+| admin | Admin@123 | admin | everything: cases, reports, CSV, accounts, roles and deletion |
 | nurse1 | Nurse@123 | officer | add and edit cases |
 | records1 | Records@123 | records | search, view reports, download CSV |
 | viewer1 | View@123 | viewer | view cases and reports only |
 
+If you change the PostgreSQL `postgres` password, update both `config.php` and the `PGPASSWORD` line in the two batch files.
+
 ## What it does
 
-- Sign in and sign out, with role-based menus.
-- Add, view, search and edit injury cases with both a patient code and an optional patient name. The search box on Cases and Reports finds cases by reference, code or name.
-- Case references (`INJ-2026-0016`) and patient codes (`PT-1016`) are assigned automatically from PostgreSQL sequences. The New Case form shows both next values as read-only fields; editing a case shows its existing values, which never change.
+- Sign in and sign out, with role-based menus and server-side permission checks.
+- **Cases — full CRUD:** add, view, search, edit and delete injury cases. Each case has a patient code and an optional patient name. The search box on Cases and Reports finds cases by reference, code or name.
+- Case references (`INJ-2026-0016`) and patient codes (`PT-1016`) are assigned automatically from PostgreSQL sequences. The New Case form shows both next values as read-only fields; editing a case shows its existing values, which never change. Deleting a case does not reuse its numbers.
 - Dashboard with basic counts and summaries.
 - Reports with filters and a CSV download for admin and records users.
-- Admin screen for creating accounts, changing roles and disabling accounts.
+- **Accounts — full CRUD:** admins can create, view, edit, disable and delete staff accounts. You cannot delete yourself or the last administrator. Cases recorded by a deleted account are kept, with the recorder shown as "unknown user".
+- **Roles — full CRUD:** admins can create, view, edit and delete roles and choose their permissions. A role that still has accounts cannot be deleted. Users must sign out and back in after their role's permissions change.
+- Every change is protected: POST-only actions, CSRF tokens, prepared statements, and permission checks on the server.
+
+## CRUD and permissions at a glance
+
+| Data | Create | Read | Update | Delete |
+| --- | --- | --- | --- | --- |
+| Cases | `create` (admin, officer) | `view` (all roles) | `create` (admin, officer) | `delete` (admin by default) |
+| Accounts | `manage_users` (admin) | `manage_users` (admin) | `manage_users` (admin) | `manage_users` + `delete` (admin) |
+| Roles | `manage_users` (admin) | `manage_users` (admin) | `manage_users` (admin) | `manage_users` + `delete` (admin) |
+
+Permission names are stored in the `roles.permissions` column and can be changed on the **Roles** page or in `database.sql`.
 
 ## Files
 
 ```
 config.php          database settings (HISS on port 5432)
 create-database.sql creates the HISS database with the correct capital letters
-database.sql        tables, roles and sample cases
-migration-add-patient-name.sql  adds the name field without removing existing data
-migration-add-patient-code.sql  adds the patient code sequence to an existing database
+database.sql        tables, roles, accounts and sample cases
+migration-add-patient-name.sql       adds the name field without removing existing data
+migration-add-patient-code.sql       adds the patient code sequence to an existing database
+migration-add-delete-permission.sql  adds the delete permission to the admin role
+migration-fix-recorded-by-delete.sql keeps cases when their recorder is deleted
 index.php           sign-in page
 dashboard.php       summary counts
 cases.php           search and list
 case_view.php       full case details
 case_form.php       add / edit case
+case_delete.php     delete case (POST, CSRF, delete permission)
 reports.php         filtered summaries
 export.php          CSV download
-users.php           admin: manage accounts
+users.php           admin: create, edit and delete accounts
+roles.php           admin: create, edit and delete roles and permissions
+logout.php          ends the session
 includes/           database connection, helpers and page layout
 assets/             stylesheet and a little JavaScript
 runtime/php/        portable PHP 8.6 with pdo_pgsql enabled
+README.md           this file
+README-START-HERE.md quick start and manual database commands
+SETUP-NEW-PC.md     copy the project to another PC and test it
+HANDOVER.md         full technical handover and troubleshooting
 ```
 
 ## Notes
 
-All records are synthetic demo data. Passwords are bcrypt hashes, forms use CSRF tokens, queries use prepared statements, and the permission list for each role lives in the `roles` table.
+All records are synthetic demo data. Passwords are bcrypt hashes, forms use CSRF tokens, queries use prepared statements, and the permission list for each role lives in the `roles` table. The PHP built-in server is for local demonstration; see HANDOVER.md for production deployment advice.

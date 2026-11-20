@@ -95,6 +95,15 @@ include __DIR__ . '/includes/header.php';
               <?php if (can('create')): ?>
                 &middot; <a href="case_form.php?id=<?= (int) $case['case_id'] ?>">Edit</a>
               <?php endif; ?>
+              <?php if (can('delete')): ?>
+                &middot;
+                <form method="post" action="case_delete.php" class="inlineform"
+                      data-confirm="Delete case <?= e($case['case_reference']) ?>? This cannot be undone.">
+                  <?= csrf_field() ?>
+                  <input type="hidden" name="case_id" value="<?= (int) $case['case_id'] ?>">
+                  <button type="submit" class="linkdelete">Delete</button>
+                </form>
+              <?php endif; ?>
             </td>
           </tr>
         <?php endforeach; ?>

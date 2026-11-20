@@ -3,6 +3,8 @@
 
 This guide is written for someone who has never seen the project before. It explains what the system does, where everything lives, how the pieces talk to each other, how to run it, how to change it, and what to do when something breaks. All explanations refer to the actual files in this folder.
 
+If your immediate task is to put the project on a different computer, start with **SETUP-NEW-PC.md** — it is a shorter, step-by-step installation and verification checklist. This document is the deeper technical reference.
+
 ---
 
 ## 0. Quick facts
@@ -45,10 +47,11 @@ The system is a small web prototype for recording, searching and reporting injur
 1. **Sign in and sign out** with staff accounts and four roles.
 2. **Record an injury case**: patient code, patient name, age, sex, incident date/time, cause, injury type, body part, severity, treatment, outcome, notes.
 3. **Search the register** by case reference, patient code or patient name, plus filters for mechanism, outcome and date range.
-4. **View and edit** existing cases.
+4. **View, edit and delete** existing cases (deletion needs the separate `delete` permission).
 5. **See a dashboard** with case counts and simple breakdowns.
 6. **Run reports** with the same filters and download a CSV file.
-7. **Manage staff accounts** (admin only): create, edit, change role, disable.
+7. **Manage staff accounts** (admin only): create, edit, change role, disable, delete.
+8. **Manage roles** (admin only): create, edit and delete roles and choose which permissions they carry.
 
 ### 1.3 Roles and permissions
 
@@ -56,12 +59,29 @@ Permissions are stored as a comma-separated string in the `roles.permissions` co
 
 | Role | Permissions from `database.sql` | What the user can do |
 | --- | --- | --- |
-| `admin` | `view,create,export,manage_users` | Everything: cases, reports, CSV, user accounts |
+| `admin` | `view,create,export,manage_users,delete` | Everything: cases, reports, CSV, accounts, roles and deletion |
 | `officer` | `view,create` | Add and edit cases |
 | `records` | `view,export` | Search, view reports, download CSV |
 | `viewer` | `view` | View cases and reports only |
 
-The navigation bar in `includes/header.php` hides "New case" unless `can('create')`, and hides "Users" unless `can('manage_users')`. Pages themselves are protected by `require_login()` or `require_permission('...')`, so hiding a link is not the only protection.
+The five valid permission names are defined in `$permission_options` at the bottom of `includes/common.php` and can be assigned on the **Roles** page (`roles.php`). The navigation bar in `includes/header.php` hides "New case" unless `can('create')`, and hides "Users" and "Roles" unless `can('manage_users')`. Pages themselves are protected by `require_login()` or `require_permission('...')`, so hiding a link is not the only protection.
+
+### 1.3.1 CRUD matrix (what can be changed by whom)
+
+| Data | Create | Read | Update | Delete |
+| --- | --- | --- | --- | --- |
+| Cases (`injury_cases`) | `create` — `case_form.php` | `view` — `cases.php`, `case_view.php`, `reports.php`, `export.php` | `create` — `case_form.php` | `delete` — `case_delete.php` |
+| Accounts (`users`) | `manage_users` — `users.php?action=new` | `manage_users` — `users.php` | `manage_users` — `users.php?action=edit` (includes disable) | `manage_users` **and** `delete` — `users.php` |
+| Roles (`roles`) | `manage_users` — `roles.php?action=new` | `manage_users` — `roles.php` | `manage_users` — `roles.php?action=edit` | `manage_users` **and** `delete` — `roles.php` |
+
+Every write operation is:
+
+- **POST only** — a `GET` cannot change data;
+- **CSRF protected** — `check_csrf()` compares the token in the form with the one in the session;
+- **server-side checked** — `require_permission()` runs before any SQL;
+- **parameterised** — all values are bound with PDO placeholders.
+
+Extra safety rules: you cannot delete your own account, you cannot delete the last administrator, you cannot delete a role that still has accounts, and you cannot remove account/role management from your own role. See section 8.9.
 
 ### 1.4 A normal user journey
 
@@ -79,7 +99,7 @@ Two PostgreSQL sequences prevent typing mistakes:
 - `case_ref_seq` → case references such as `INJ-2026-0017`
 - `patient_code_seq` → patient codes such as `PT-1017`
 
-`includes/common.php` has `peek_sequence()`, `preview_case_reference()` and `preview_patient_code()`. These read the sequence **without consuming a value**, so the New Case form can show the next numbers as read-only fields. When the form is actually saved, `case_form.php` calls `nextval()` on both sequences and writes the real values. Editing a case shows its existing reference and code, which never change.
+`includes/common.php` has `peek_sequence()`, `preview_case_reference()` and `preview_patient_code()`. These read the sequence **without consuming a value**, so the New Case form can show the next numbers as read-only fields. When the form is actually saved, `case_form.php` calls `nextval()` on both sequences and writes the real values. Editing a case shows its existing reference and code, which never change. Deleting a case does **not** return its numbers to the sequence — this prevents an old CSV or printed record from suddenly referring to a different case.
 
 ---
 
@@ -132,9 +152,11 @@ Hospital Injury Surveillance System\
 ├── cases.php                     Case list and search form
 ├── case_view.php                 Full details of one case
 ├── case_form.php                 Add / edit a case (all validation and saving)
+├── case_delete.php               Delete a case (POST, CSRF, delete permission)
 ├── reports.php                   Filtered report totals
 ├── export.php                    CSV download (permission: export)
-├── users.php                     Admin user management (permission: manage_users)
+├── users.php                     Admin account management (permission: manage_users)
+├── roles.php                     Admin role/permission management (permission: manage_users)
 ├── logout.php                    Ends the session
 ├── config.php                    Database connection settings
 │
@@ -152,6 +174,8 @@ Hospital Injury Surveillance System\
 ├── create-database.sql           Creates the HISS database with capital letters
 ├── migration-add-patient-name.sql  Adds patient_name to an older database
 ├── migration-add-patient-code.sql  Adds patient_code_seq to an older database
+├── migration-add-delete-permission.sql  Adds the delete permission to admin
+├── migration-fix-recorded-by-delete.sql Keeps cases when their recorder is deleted
 │
 ├── start-injury-surveillance.bat Starts/checks PostgreSQL and starts PHP
 ├── stop-injury-surveillance.bat  Stops only the PHP server
@@ -162,8 +186,9 @@ Hospital Injury Surveillance System\
 │   ├── pgdata\                   Old unused test cluster from earlier setup
 │   └── logs\                     Old PostgreSQL log
 │
-├── README.md                     Short project overview and demo accounts
+├── README.md                     Short project overview, accounts and CRUD matrix
 ├── README-START-HERE.md          Quick start and manual commands
+├── SETUP-NEW-PC.md               Copy the project to another PC and test it
 ├── HANDOVER.md                   This guide
 └── .gitignore                    Ignores runtime\ so binaries are not committed
 ```
@@ -176,12 +201,14 @@ Hospital Injury Surveillance System\
 | `includes/db.php` | Builds the DSN `pgsql:host=...;port=...;dbname=...`, creates `$pdo`, stops with an error page if connection fails. |
 | `includes/common.php` | The shared toolbox: `e()` (HTML escaping), `csrf_field()`, `check_csrf()`, `flash()`, `current_user()`, `can()`, `require_login()`, `require_permission()`, `options()`, `value_of()`, `valid_date()`, `read_filters()`, `case_filter_sql()`, `preview_case_reference()`, `preview_patient_code()`, and all the dropdown option arrays. |
 | `case_form.php` | The largest and most important file. Handles both add and edit. It reads POST data, validates it, generates the reference and code with `nextval()`, and runs prepared `INSERT` or `UPDATE` statements. |
-| `cases.php` | Builds a `SELECT` using `case_filter_sql()` and lists up to 100 newest matching cases, ordered by incident date. |
+| `case_delete.php` | Deletes one case. POST only, `require_permission('delete')`, CSRF check, prepared `DELETE`, then a flash message and redirect. Sequence numbers are not reused. |
+| `cases.php` | Builds a `SELECT` using `case_filter_sql()` and lists up to 100 newest matching cases, ordered by incident date. Shows Edit (if `create`) and Delete (if `delete`) actions. |
 | `reports.php` | Uses the same filters and runs `COUNT(*)`, `GROUP BY mechanism`, `GROUP BY outcome`, `GROUP BY classification`, and a monthly grouping with `to_char(incident_date, 'YYYY-MM')`. |
 | `export.php` | Same filters as reports, but outputs CSV with `fputcsv()`. Requires the `export` permission. |
-| `users.php` | Requires `manage_users`. Validates username, full name, role, password and active flag. Passwords are stored with `password_hash($password, PASSWORD_BCRYPT)`. |
-| `database.sql` | Drops and recreates `injury_cases`, `users`, `roles`, `case_ref_seq`, `patient_code_seq`, then inserts demo data. **Destructive.** |
-| `migration-*.sql` | Non-destructive additions for databases created before the name/code features. Safe to run more than once. |
+| `users.php` | Requires `manage_users`; creation/edit/removal of accounts. Delete additionally requires `delete`, blocks self-delete and deleting the last admin. Passwords are stored with `password_hash($password, PASSWORD_BCRYPT)`. |
+| `roles.php` | Requires `manage_users`; full CRUD for roles and their permission strings. Delete additionally requires `delete` and refuses roles that still have accounts. Editing your own role may not remove `manage_users`. |
+| `database.sql` | Drops and recreates `injury_cases`, `users`, `roles`, `case_ref_seq`, `patient_code_seq`, then inserts demo data. **Destructive.** `recorded_by` uses `ON DELETE SET NULL`. |
+| `migration-*.sql` | Non-destructive additions for databases created by older versions. Safe to run more than once. The start script applies any that are missing. |
 
 ---
 
@@ -232,7 +259,17 @@ Example: user searches for `Amina` in `cases.php`.
 5. A prepared statement runs `INSERT` or `UPDATE`. Values are always bound as parameters, never concatenated into SQL.
 6. `flash('success', ...)` stores a message in the session, then `redirect('case_view.php?id=...')` sends the browser to the saved record. The header displays the flash once and clears it.
 
-### 4.4 Security measures that are actually implemented
+### 4.4 How a delete works
+
+Deletes never happen through a link — they are POST forms with a CSRF token. There are three places to know:
+
+1. **Case:** the Delete button on `cases.php` or `case_view.php` posts `case_id` to `case_delete.php`. That file requires `delete`, checks CSRF, reads the reference for the success message, runs `DELETE FROM injury_cases WHERE case_id = :id`, flashes a message and redirects to `cases.php`.
+2. **Account:** the Delete button on `users.php` posts `action=delete` and `user_id` to the same page. Before deleting, the code blocks self-deletion and checks that at least one admin remains. Because `injury_cases.recorded_by` is `ON DELETE SET NULL`, the cases stay and show "unknown user" as the recorder.
+3. **Role:** the Delete button on `roles.php` posts `action=delete` and `role_id`. The server counts accounts using that role and refuses if the count is above zero (otherwise those accounts would lose their role link).
+
+All three catch `PDOException`, write details to the PHP error log and show a neutral error message to the user.
+
+### 4.5 Security measures that are actually implemented
 
 | Measure | Where |
 | --- | --- |
@@ -243,7 +280,12 @@ Example: user searches for `Amina` in `cases.php`.
 | Session ID regeneration at login | `index.php` line 31 |
 | HTTP-only, SameSite=Lax session cookie | `includes/common.php` lines 3–8 |
 | Role checks on pages and menu items | `require_permission()` and `can()` |
-| Own-account deactivation blocked | `users.php` lines 69–71 |
+| Destructive actions are POST-only with CSRF | `case_delete.php`, `users.php`, `roles.php` |
+| Own-account deactivation/deletion blocked | `users.php` |
+| Last administrator cannot be deleted | `users.php` (admin role count) |
+| Role in use cannot be deleted | `roles.php` (user count per role) |
+| Cannot remove your own role's `manage_users` | `roles.php` |
+| Deleting an account keeps its cases | `injury_cases.recorded_by ... ON DELETE SET NULL` |
 
 Known limitation for a handover: PHP's built-in server is intended for development. See section 5.5 for deployment guidance.
 
@@ -258,6 +300,8 @@ Known limitation for a handover: PHP's built-in server is intended for developme
 - This project folder, including the `runtime\php` folder. `runtime` is in `.gitignore`, so if you clone from Git instead of copying the folder, `runtime\php` will be missing and you must supply your own PHP with `pdo_pgsql`.
 
 ### 5.2 First-time setup, step by step
+
+For a brand-new computer, read **SETUP-NEW-PC.md** first — it covers installing PostgreSQL and copying the folder. The steps below assume PostgreSQL and the project folder are already present.
 
 1. Open PowerShell in the project folder:
    ```powershell
@@ -282,9 +326,12 @@ Known limitation for a handover: PHP's built-in server is intended for developme
    - loads `database.sql` if the public schema has no tables;
    - applies `migration-add-patient-name.sql` if the `patient_name` column is missing;
    - applies `migration-add-patient-code.sql` if `patient_code_seq` is missing;
-   - starts PHP on `http://localhost:8000/` in a small window titled "HISS PHP server".
+   - applies `migration-add-delete-permission.sql` if admin lacks the `delete` permission;
+   - applies `migration-fix-recorded-by-delete.sql` if case authorship is not `ON DELETE SET NULL`;
+   - checks whether something is already listening on port 8000; if so it leaves that server alone and prints "already listening";
+   - otherwise starts PHP on `http://localhost:8000/` in a small window titled "HISS PHP server".
 4. Open `http://localhost:8000/` in a browser.
-5. Sign in with `admin` / `Admin@123`.
+5. Sign in with `admin` / `Admin@123`. If permissions were just changed in the database while you were signed in, sign out and back in so the session picks them up.
 
 ### 5.3 Configuration
 
@@ -345,7 +392,9 @@ The PHP built-in server is a development tool. For a real deployment:
 5. Give the application its own PostgreSQL role with only the privileges it needs, instead of the `postgres` superuser.
 6. Schedule regular `pg_dump` backups.
 7. Remove or protect `reset-database.bat`, `database.sql` and the migration scripts on a production server.
-8. Replace the demo accounts and remove all synthetic cases before real use. The system currently has no audit trail and no password reset flow.
+8. Replace the demo accounts and remove all synthetic cases before real use. The system currently has no audit trail and no password reset flow. Deletions in particular are not logged anywhere except the PHP error log when they fail — add an audit table before using this with real records.
+9. Decide who gets the `delete` permission. It is granted only to `admin` in the demo data; grant it to another role on the Roles page only if that role really needs it.
+10. `runtime\pgdata` and `runtime\logs` are leftovers from an unused test cluster. They are not needed by the running app and can be removed from a deployment.
 
 ---
 
@@ -457,6 +506,38 @@ git log --oneline -5             # see recent commits
 
 The repository has a remote (`origin`) but commits were intentionally not pushed. Do not push unless you intend to share the code. `runtime\` is ignored, so the PHP binary and old test database are not versioned.
 
+### 6.12 Delete a case
+
+1. Sign in with an account that has the `delete` permission (admin by default).
+2. Open the case from **Cases**, or use the Delete link in the results table.
+3. Read the confirmation dialog carefully — deletion is permanent.
+4. Click OK. `case_delete.php` removes the row and redirects to Cases with a success message.
+
+Numbers are not recycled: after deleting case 17, the next case still gets reference `INJ-2026-0018` and code `PT-1018` if those were the last values. This is deliberate.
+
+### 6.13 Delete a staff account
+
+1. Sign in as admin and open **Users**.
+2. Use the Delete link on the account. The row for your own account shows "You" instead — nobody can delete themselves.
+3. Confirm. The server refuses if this is the only administrator.
+4. Cases recorded by that account remain in the register. On the case details page the recorder is shown as "unknown user" because `recorded_by` is set to NULL.
+
+To keep a safer history, disable the account (untick **Account active**) instead of deleting it. Disabling preserves the name on case records.
+
+### 6.14 Add, edit or delete a role
+
+1. Sign in as admin and open **Roles**.
+2. **Add a role:** click *Add a role*, enter a lowercase name such as `data_clerk`, a description, and tick the permissions it needs.
+3. **Edit a role:** click Edit on its row. Change the description or permissions. Users must sign out and back in before they notice a permission change, because permissions are copied into the session at login.
+4. **Delete a role:** use the Delete link. The server refuses while any account still uses that role — move those accounts to a different role first.
+5. You cannot remove `manage_users` from your own role, because that would lock you out of account and role management.
+
+Valid permissions are `view`, `create`, `export`, `manage_users` and `delete`. They are defined in `$permission_options` in `includes/common.php` and checked with `can()` / `require_permission()` throughout the app.
+
+### 6.15 Test a copy on another computer
+
+See **SETUP-NEW-PC.md**. It walks through installing PostgreSQL, copying the folder (remember `runtime\php`), configuring `config.php` and the batch files, starting the app, and a 13-step test covering all CRUD operations and role restrictions.
+
 ---
 
 ## 7. What to check and how to troubleshoot common errors
@@ -506,6 +587,14 @@ Work through this list before digging deeper:
 | CSV has PHP warnings at the top | Old `fputcsv()` call without escape argument | `export.php` now passes `',', '"', '\\'` to both `fputcsv()` calls; keep those arguments |
 | Edit form rejects time `09:15:00` | PostgreSQL TIME includes seconds | `case_form.php` trims to `HH:MM` when loading and validates `HH:MM` or `HH:MM:SS` |
 | Styling looks broken | Browser cached old CSS, or wrong path | Hard refresh; confirm `assets/style.css` is reachable at `http://localhost:8000/assets/style.css` |
+| Delete button not visible | Account lacks `delete` (or `manage_users` for accounts/roles) | Sign in as admin, check **Roles**, then sign out and back in |
+| Delete attempt returns HTTP 403 | Missing/invalid CSRF token, or permission missing | Reload the page for a fresh token, sign in again after role changes |
+| "This is the last administrator account" | Only one admin exists | Create another admin (Users → Add a user, role `admin`) first |
+| "You cannot delete your own account" | Normal safety rule | Sign in with a different admin account |
+| "Role ... is still assigned to N account(s)" | Accounts still reference the role | Edit those accounts and choose another role, then delete |
+| "You cannot remove account/role management from your own role" | Normal lockout protection | Keep `manage_users` on your own role; remove it from a different role |
+| Deleting an account fails with a foreign key error | `recorded_by` FK not updated by migration | Run `migration-fix-recorded-by-delete.sql` |
+| Case shows "unknown user" as recorder | The recording account was deleted | Expected: `recorded_by` was set to NULL to keep the case |
 
 ### 7.3 Useful read-only SQL checks
 
@@ -524,6 +613,19 @@ SELECT role_name, permissions FROM roles ORDER BY role_id;
 -- column exists?
 SELECT column_name FROM information_schema.columns
 WHERE table_name = 'injury_cases' ORDER BY ordinal_position;
+
+-- permissions and account counts per role
+SELECT r.role_name, r.permissions, COUNT(u.user_id) AS users
+FROM roles r LEFT JOIN users u ON u.role_id = r.role_id
+GROUP BY r.role_name, r.permissions ORDER BY r.role_id;
+
+-- does deleting an account keep cases? (confdeltype 'n' = SET NULL)
+SELECT conname, confdeltype FROM pg_constraint
+WHERE conname = 'injury_cases_recorded_by_fkey';
+
+-- next automatic numbers
+SELECT last_value, is_called FROM case_ref_seq;
+SELECT last_value, is_called FROM patient_code_seq;
 ```
 
 Run these with:
@@ -625,15 +727,27 @@ The PostgreSQL service usually starts with Windows, but PHP does not.
 2. Run `.\start-injury-surveillance.bat` again. It is safe to run repeatedly: it checks what already exists and skips completed steps.
 3. If port 8000 is occupied, either stop the other process or change `set "WEBPORT=8000"` in the batch file and use the new port in the browser.
 
+### 8.9 A delete operation fails
+
+Work through these in order:
+
+1. **Check the permission.** The Delete links only appear when `can('delete')` is true. For accounts and roles, `manage_users` is also required. Permissions come from the session, so sign out and back in after any role change.
+2. **Check the HTTP response.** In the browser's Network tab, a 403 means permission or CSRF. Reload the page to get a fresh CSRF token and try again. The token is single-page, not single-use, but an old page after a session restart will fail.
+3. **Check the message.** The app explains its own refusals: self-delete, last administrator, role still in use, own role losing `manage_users`. Each has a specific fix described in the message and in section 6.12–6.14.
+4. **Check the foreign key.** If deleting an account fails with `violates foreign key constraint injury_cases_recorded_by_fkey`, the older FK is still in place. Run `migration-fix-recorded-by-delete.sql`; the start script does this automatically too.
+5. **Check the console.** A failed SQL statement is written to the PHP error log with `Case delete failed`, `User delete failed` or `Role delete failed`.
+6. **If the row really is gone but the list still shows it**, the browser is showing a cached page. Refresh.
+7. **If a case was deleted by mistake**, there is no undo. Restore from a `pg_dump` backup, or recreate the case — but note that its old reference and code will not be reused.
+
 ---
 
 ## Appendix A. Demo accounts
 
 | Username | Password | Role | Menu access |
 | --- | --- | --- | --- |
-| admin | Admin@123 | admin | Dashboard, Cases, New case, Reports, Users |
-| nurse1 | Nurse@123 | officer | Dashboard, Cases, New case, Reports |
-| records1 | Records@123 | records | Dashboard, Cases, Reports (CSV allowed) |
+| admin | Admin@123 | admin | Dashboard, Cases, New case, Reports, Users, Roles; can delete cases, accounts and roles |
+| nurse1 | Nurse@123 | officer | Dashboard, Cases, New case, Reports; add/edit cases, no deletion |
+| records1 | Records@123 | records | Dashboard, Cases, Reports (CSV allowed), no deletion |
 | viewer1 | View@123 | viewer | Dashboard, Cases, Reports (read only) |
 
 ## Appendix B. Database structure
@@ -641,15 +755,18 @@ The PostgreSQL service usually starts with Windows, but PHP does not.
 ```
 roles
   role_id, role_name, description, permissions
+  permissions = comma-separated: view, create, export, manage_users, delete
 
 users
   user_id, username, full_name, password_hash, role_id, active, created_at
+  role_id  -> roles.role_id (RESTRICT: delete the role's accounts first)
 
 injury_cases
   case_id, case_reference, incident_date, incident_time,
   patient_code, patient_name, age, sex, mechanism, injury_type,
   body_part, classification, treatment, outcome, notes,
   recorded_by, created_at, updated_at
+  recorded_by -> users.user_id ON DELETE SET NULL (keeps cases when a user is deleted)
 
 sequences
   case_ref_seq       -> INJ-YYYY-NNNN
@@ -662,7 +779,9 @@ Indexes exist on incident date, mechanism, patient code and patient name.
 ## Appendix C. Key assumptions and limitations to be aware of
 
 - All data is synthetic. Do not enter real patient details.
-- There is no audit trail of who changed which case, only `recorded_by`, `created_at` and `updated_at`.
+- There is no audit trail of who changed or deleted a case, only `recorded_by`, `created_at` and `updated_at`. Failed deletes are written to the PHP error log, but successful ones are not recorded anywhere.
+- Deletion is permanent: there is no recycle bin or undo. Restore from a backup if needed.
+- Deleting an account keeps its cases but erases the recorder's name (`recorded_by` becomes NULL). Disabling the account preserves that name.
 - A patient code is generated per case, so repeat visits by the same person would get different codes unless you change the design.
 - The built-in PHP server handles one request at a time; it is fine for a demo but not for concurrent production use.
 - `reset-database.bat` and `database.sql` destroy data. Always back up first.

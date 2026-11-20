@@ -39,6 +39,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
     <a href="reports.php"<?= in_array($current_page, ['reports.php', 'export.php'], true) ? ' class="active"' : '' ?>>Reports</a>
     <?php if (can('manage_users')): ?>
       <a href="users.php"<?= $current_page === 'users.php' ? ' class="active"' : '' ?>>Users</a>
+      <a href="roles.php"<?= $current_page === 'roles.php' ? ' class="active"' : '' ?>>Roles</a>
     <?php endif; ?>
   </div>
 </nav>
