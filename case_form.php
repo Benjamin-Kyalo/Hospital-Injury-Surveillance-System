@@ -21,6 +21,8 @@ if ($editing) {
     }
 }
 
+$reference_preview = $editing ? $case['case_reference'] : preview_case_reference($pdo);
+
 $mechanism_form = ['' => 'Select mechanism'] + array_slice($mechanism_options, 1, null, true);
 $injury_form    = ['' => 'Select injury type'] + $injury_options;
 $body_form      = ['' => 'Select body part'] + $body_options;
@@ -159,6 +161,17 @@ include __DIR__ . '/includes/header.php';
 
 <form method="post" action="case_form.php<?= $editing ? '?id=' . (int) $id : '' ?>">
   <?= csrf_field() ?>
+
+  <section class="panel">
+    <h2>Case reference</h2>
+    <div class="formgrid">
+      <div class="field">
+        <label for="case_reference">Reference number</label>
+        <input type="text" id="case_reference" value="<?= e($reference_preview) ?>" readonly>
+        <small><?= $editing ? 'This number stays the same when you edit the case.' : 'Filled in automatically when the case is saved. Nothing to type here.' ?></small>
+      </div>
+    </div>
+  </section>
 
   <section class="panel">
     <h2>Patient and incident</h2>

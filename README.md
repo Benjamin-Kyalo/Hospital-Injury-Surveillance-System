@@ -29,6 +29,7 @@ Do not close the small "HISS PHP server" window while using the site — closing
 
 - Sign in and sign out, with role-based menus.
 - Add, view, search and edit injury cases with both a patient code and an optional patient name. The search box on Cases and Reports finds cases by reference, code or name.
+- Case references such as `INJ-2026-0016` are assigned automatically. The New Case form shows the next number as a read-only field; editing a case shows its existing number.
 - Dashboard with basic counts and summaries.
 - Reports with filters and a CSV download for admin and records users.
 - Admin screen for creating accounts, changing roles and disabling accounts.

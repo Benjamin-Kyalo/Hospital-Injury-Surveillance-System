@@ -109,6 +109,14 @@ function valid_date(?string $date): bool
     return $parsed && $parsed->format('Y-m-d') === $date;
 }
 
+// Shows the number the next case will get without consuming a sequence value.
+function preview_case_reference(PDO $pdo): string
+{
+    $seq = $pdo->query('SELECT last_value, is_called FROM case_ref_seq')->fetch();
+    $next = ($seq && $seq['is_called']) ? (int) $seq['last_value'] + 1 : (int) ($seq['last_value'] ?? 0);
+    return sprintf('INJ-%s-%04d', date('Y'), $next);
+}
+
 function query_value(string $key): string
 {
     $value = $_GET[$key] ?? '';
