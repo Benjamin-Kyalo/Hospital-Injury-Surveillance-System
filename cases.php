@@ -9,7 +9,7 @@ $params = [];
 $where = case_filter_sql($filters, $params);
 
 $stmt = $pdo->prepare("
-    SELECT case_id, case_reference, incident_date, patient_code, mechanism,
+    SELECT case_id, case_reference, incident_date, patient_code, patient_name, mechanism,
            injury_type, body_part, classification, outcome
     FROM injury_cases
     $where
@@ -31,8 +31,8 @@ include __DIR__ . '/includes/header.php';
   <h2>Find a case</h2>
   <form method="get" action="cases.php" class="filters">
     <div class="field">
-      <label for="q">Reference or patient code</label>
-      <input type="text" id="q" name="q" value="<?= e($filters['q']) ?>" placeholder="e.g. INJ-2026 or PT-1004">
+      <label for="q">Reference, patient code or name</label>
+      <input type="text" id="q" name="q" value="<?= e($filters['q']) ?>" placeholder="e.g. INJ-2026, PT-1004 or Amina">
     </div>
     <div class="field">
       <label for="mechanism">Mechanism</label>
@@ -73,6 +73,7 @@ include __DIR__ . '/includes/header.php';
             <th>Reference</th>
             <th>Incident date</th>
             <th>Patient code</th>
+            <th>Patient name</th>
             <th>Mechanism</th>
             <th>Injury</th>
             <th>Outcome</th>
@@ -85,6 +86,7 @@ include __DIR__ . '/includes/header.php';
             <td><a href="case_view.php?id=<?= (int) $case['case_id'] ?>"><?= e($case['case_reference']) ?></a></td>
             <td><?= e(date('d M Y', strtotime($case['incident_date']))) ?></td>
             <td><?= e($case['patient_code']) ?></td>
+            <td><?= $case['patient_name'] ? e($case['patient_name']) : '<span class="muted">Not recorded</span>' ?></td>
             <td><?= e($case['mechanism']) ?></td>
             <td><?= e($case['injury_type']) ?></td>
             <td><?= e($case['outcome']) ?></td>

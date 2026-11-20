@@ -69,8 +69,8 @@ include __DIR__ . '/includes/header.php';
   <h2>Filters</h2>
   <form method="get" action="reports.php" class="filters">
     <div class="field">
-      <label for="q">Reference or patient code</label>
-      <input type="text" id="q" name="q" value="<?= e($filters['q']) ?>">
+      <label for="q">Reference, patient code or name</label>
+      <input type="text" id="q" name="q" value="<?= e($filters['q']) ?>" placeholder="e.g. PT-1004 or Amina">
     </div>
     <div class="field">
       <label for="mechanism">Mechanism</label>

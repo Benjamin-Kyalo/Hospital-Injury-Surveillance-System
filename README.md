@@ -28,7 +28,7 @@ Do not close the small "HISS PHP server" window while using the site — closing
 ## What it does
 
 - Sign in and sign out, with role-based menus.
-- Add, view, search and edit injury cases using patient codes rather than names.
+- Add, view, search and edit injury cases with both a patient code and an optional patient name. The search box on Cases and Reports finds cases by reference, code or name.
 - Dashboard with basic counts and summaries.
 - Reports with filters and a CSV download for admin and records users.
 - Admin screen for creating accounts, changing roles and disabling accounts.
@@ -39,6 +39,7 @@ Do not close the small "HISS PHP server" window while using the site — closing
 config.php          database settings (HISS on port 5432)
 create-database.sql creates the HISS database with the correct capital letters
 database.sql        tables, roles and sample cases
+migration-add-patient-name.sql  adds the name field without removing existing data
 index.php           sign-in page
 dashboard.php       summary counts
 cases.php           search and list

@@ -60,6 +60,14 @@ Expected result: `cases = 16` and `users = 4`.
 
 Warning: `database.sql` replaces the HISS tables. Do not run it if you have added real cases you want to keep. `reset-database.bat` does the same thing after asking for confirmation.
 
+To add the patient name field to an existing HISS database **without losing any data**, run:
+
+```powershell
+& "$pg\psql.exe" -h 127.0.0.1 -p 5432 -U postgres -d HISS -f ".\migration-add-patient-name.sql"
+```
+
+The start script also runs this automatically the first time it finds an older database without the `patient_name` column.
+
 ## Manual start commands (what the start script does)
 
 ```powershell

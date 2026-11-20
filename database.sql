@@ -32,6 +32,7 @@ CREATE TABLE injury_cases (
     incident_date  DATE NOT NULL,
     incident_time  TIME,
     patient_code   VARCHAR(40) NOT NULL,
+    patient_name   VARCHAR(100),
     age            SMALLINT CHECK (age BETWEEN 0 AND 120),
     sex            VARCHAR(20) NOT NULL DEFAULT 'Not recorded',
     mechanism      VARCHAR(50) NOT NULL,
@@ -49,6 +50,7 @@ CREATE TABLE injury_cases (
 CREATE INDEX idx_cases_date ON injury_cases (incident_date DESC);
 CREATE INDEX idx_cases_mechanism ON injury_cases (mechanism);
 CREATE INDEX idx_cases_patient ON injury_cases (patient_code);
+CREATE INDEX idx_cases_patient_name ON injury_cases (patient_name);
 
 -- Roles. Permissions are comma-separated and checked by the PHP code.
 INSERT INTO roles (role_name, description, permissions) VALUES
@@ -85,5 +87,25 @@ INSERT INTO injury_cases (
     ('INJ-2026-0014', '2026-11-10', '18:20', 'PT-1014', 5,  'Male',   'Burn',               'Burn',              'Multiple sites',  'Severe',   'Referred',       'Referred to another facility', '', 3),
     ('INJ-2026-0015', '2026-11-14', '08:05', 'PT-1015', 44, 'Female', 'Road traffic crash', 'Contusion',         'Multiple sites',  'Moderate', 'Observation',    'Treated and discharged',       '', 2),
     ('INJ-2026-0016', '2026-11-18', '20:10', 'PT-1016', 38, 'Male',   'Assault',            'Laceration',        'Head / neck',     'Minor',    'Wound care',     'Left against advice',          '', 2);
+
+-- Fictional names for the demo cases. No real patient information.
+UPDATE injury_cases SET patient_name = CASE patient_code
+    WHEN 'PT-1001' THEN 'Amina Otieno'
+    WHEN 'PT-1002' THEN 'Brian Kiptoo'
+    WHEN 'PT-1003' THEN 'Grace Wanjiku'
+    WHEN 'PT-1004' THEN 'Faith Muthoni'
+    WHEN 'PT-1005' THEN 'Peter Kamau'
+    WHEN 'PT-1006' THEN 'Sarah Chebet'
+    WHEN 'PT-1007' THEN 'Kevin Omondi'
+    WHEN 'PT-1008' THEN 'Mary Njoroge'
+    WHEN 'PT-1009' THEN 'Joseph Mwangi'
+    WHEN 'PT-1010' THEN 'Lydia Achieng'
+    WHEN 'PT-1011' THEN 'Dennis Kiprop'
+    WHEN 'PT-1012' THEN 'Anne Wafula'
+    WHEN 'PT-1013' THEN 'Samuel Maina'
+    WHEN 'PT-1014' THEN 'Hassan Ali'
+    WHEN 'PT-1015' THEN 'Rebecca Wambui'
+    WHEN 'PT-1016' THEN 'Collins Ouma'
+END;
 
 SELECT setval('case_ref_seq', 16, TRUE);

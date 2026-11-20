@@ -47,6 +47,12 @@ if not errorlevel 1 (
     echo HISS tables already present.
 )
 
+"%PGBIN%\psql.exe" -h 127.0.0.1 -p %PGPORT% -U postgres -d HISS -w -tAc "select count(*) from information_schema.columns where table_name='injury_cases' and column_name='patient_name'" | findstr /r /c:"^0$" >nul
+if not errorlevel 1 (
+    echo Adding the patient name field to the existing cases ...
+    "%PGBIN%\psql.exe" -h 127.0.0.1 -p %PGPORT% -U postgres -d HISS -w -f "%APP%migration-add-patient-name.sql"
+)
+
 echo Starting PHP on http://localhost:%WEBPORT% ...
 start "HISS PHP server" /MIN "%PHP%" -S 127.0.0.1:%WEBPORT% -t "%APP%"
 

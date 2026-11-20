@@ -35,6 +35,7 @@ include __DIR__ . '/includes/header.php';
     <h2>Patient and incident</h2>
     <dl class="details">
       <dt>Patient code</dt><dd><?= e($case['patient_code']) ?></dd>
+      <dt>Patient name</dt><dd><?= $case['patient_name'] ? e($case['patient_name']) : 'Not recorded' ?></dd>
       <dt>Age</dt><dd><?= $case['age'] !== null ? e($case['age']) . ' years' : 'Not recorded' ?></dd>
       <dt>Sex</dt><dd><?= e($case['sex']) ?></dd>
       <dt>Incident date</dt><dd><?= e(date('d M Y', strtotime($case['incident_date']))) ?></dd>

@@ -34,6 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $data = [
         'patient_code'  => trim((string) ($_POST['patient_code'] ?? '')),
+        'patient_name'  => trim((string) ($_POST['patient_name'] ?? '')),
         'age'           => trim((string) ($_POST['age'] ?? '')),
         'sex'           => (string) ($_POST['sex'] ?? ''),
         'incident_date' => trim((string) ($_POST['incident_date'] ?? '')),
@@ -72,6 +73,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (mb_strlen($data['patient_code']) > 40) {
         $errors[] = 'Patient code is too long (40 characters maximum).';
     }
+    if (mb_strlen($data['patient_name']) > 100) {
+        $errors[] = 'Patient name is too long (100 characters maximum).';
+    }
     if (mb_strlen($data['notes']) > 1000) {
         $errors[] = 'Notes are too long (1000 characters maximum).';
     }
@@ -79,6 +83,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!$errors) {
         $params = [
             ':patient_code'  => $data['patient_code'],
+            ':patient_name'  => $data['patient_name'] === '' ? null : $data['patient_name'],
             ':age'           => $data['age'] === '' ? null : (int) $data['age'],
             ':sex'           => $data['sex'],
             ':incident_date' => $data['incident_date'],
@@ -95,7 +100,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             if ($editing) {
                 $sql = 'UPDATE injury_cases SET
-                            patient_code = :patient_code, age = :age, sex = :sex,
+                            patient_code = :patient_code, patient_name = :patient_name,
+                            age = :age, sex = :sex,
                             incident_date = :incident_date, incident_time = :incident_time,
                             mechanism = :mechanism, injury_type = :injury_type,
                             body_part = :body_part, classification = :classification,
@@ -110,11 +116,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $next = (int) $pdo->query("SELECT nextval('case_ref_seq')")->fetchColumn();
                 $reference = sprintf('INJ-%s-%04d', date('Y'), $next);
                 $sql = 'INSERT INTO injury_cases (
-                            case_reference, patient_code, age, sex, incident_date, incident_time,
-                            mechanism, injury_type, body_part, classification,
-                            treatment, outcome, notes, recorded_by
+                            case_reference, patient_code, patient_name, age, sex,
+                            incident_date, incident_time, mechanism, injury_type,
+                            body_part, classification, treatment, outcome, notes, recorded_by
                         ) VALUES (
-                            :reference, :patient_code, :age, :sex, :incident_date, :incident_time,
+                            :reference, :patient_code, :patient_name, :age, :sex, :incident_date, :incident_time,
                             :mechanism, :injury_type, :body_part, :classification,
                             :treatment, :outcome, :notes, :recorded_by
                         )';
@@ -139,7 +145,7 @@ include __DIR__ . '/includes/header.php';
 
 <div class="pagehead">
   <h1><?= $editing ? 'Edit case ' . e($case['case_reference']) : 'New injury case' ?></h1>
-  <p class="muted">Fields marked with * are required. Use the patient code, not a real name.</p>
+  <p class="muted">Fields marked with * are required. A case can be found later by its reference, patient code or patient name.</p>
 </div>
 
 <?php if ($errors): ?>
@@ -162,6 +168,12 @@ include __DIR__ . '/includes/header.php';
         <input type="text" id="patient_code" name="patient_code" maxlength="40" required
                value="<?= value_of('patient_code', $case) ?>">
         <small>Example: PT-1042</small>
+      </div>
+      <div class="field">
+        <label for="patient_name">Patient name</label>
+        <input type="text" id="patient_name" name="patient_name" maxlength="100"
+               value="<?= value_of('patient_name', $case) ?>">
+        <small>Optional. Include it if you want the case searchable by name.</small>
       </div>
       <div class="field">
         <label for="age">Age</label>

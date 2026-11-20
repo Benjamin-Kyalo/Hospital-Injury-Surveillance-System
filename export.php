@@ -8,7 +8,7 @@ $params = [];
 $where = case_filter_sql($filters, $params);
 
 $stmt = $pdo->prepare("
-    SELECT case_reference, incident_date, incident_time, patient_code, age, sex,
+    SELECT case_reference, incident_date, incident_time, patient_code, patient_name, age, sex,
            mechanism, injury_type, body_part, classification, treatment, outcome, notes
     FROM injury_cases
     $where
@@ -22,18 +22,18 @@ header('Cache-Control: no-store');
 
 $output = fopen('php://output', 'w');
 fputcsv($output, [
-    'Reference', 'Incident date', 'Time', 'Patient code', 'Age', 'Sex',
+    'Reference', 'Incident date', 'Time', 'Patient code', 'Patient name', 'Age', 'Sex',
     'Mechanism', 'Injury type', 'Body part', 'Severity',
     'Intervention', 'Outcome', 'Notes',
-]);
+], ',', '"', '\\');
 
 while ($row = $stmt->fetch()) {
     fputcsv($output, [
         $row['case_reference'], $row['incident_date'], $row['incident_time'],
-        $row['patient_code'], $row['age'], $row['sex'], $row['mechanism'],
+        $row['patient_code'], $row['patient_name'], $row['age'], $row['sex'], $row['mechanism'],
         $row['injury_type'], $row['body_part'], $row['classification'],
         $row['treatment'], $row['outcome'], $row['notes'],
-    ]);
+    ], ',', '"', '\\');
 }
 
 fclose($output);

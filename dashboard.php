@@ -76,7 +76,7 @@ include __DIR__ . '/includes/header.php';
     <strong><?= (int) $totals['severe'] ?></strong>
   </div>
   <div class="tile">
-    <span class="tilelabel">Patient codes</span>
+    <span class="tilelabel">Distinct patients</span>
     <strong><?= (int) $totals['patients'] ?></strong>
   </div>
 </div>

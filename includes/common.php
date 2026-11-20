@@ -140,7 +140,7 @@ function case_filter_sql(array $filters, array &$params): string
     $parts = [];
 
     if ($filters['q'] !== '') {
-        $parts[] = '(case_reference ILIKE :q OR patient_code ILIKE :q)';
+        $parts[] = '(case_reference ILIKE :q OR patient_code ILIKE :q OR patient_name ILIKE :q)';
         $params[':q'] = '%' . $filters['q'] . '%';
     }
     if ($filters['from'] !== '') {
