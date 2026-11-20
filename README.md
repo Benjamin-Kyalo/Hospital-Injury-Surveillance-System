@@ -6,13 +6,15 @@ A small web prototype for the Hospital Injury Surveillance and Reporting Managem
 
 From this folder, double-click **start-injury-surveillance.bat**. That script:
 
-1. starts a local PostgreSQL cluster stored in `runtime\pgdata` on port 55432,
-2. creates the `HISS` database and loads `database.sql` the first time,
+1. checks your existing PostgreSQL service on port 5432,
+2. creates the `HISS` database and loads `database.sql` if the tables are missing,
 3. starts PHP's built-in web server on port 8000.
 
-Then open **http://localhost:8000/** in your browser. Use **stop-injury-surveillance.bat** to shut both down. If you want the original demo records back, run **reset-database.bat**.
+Then open **http://localhost:8000/** in your browser. Use **stop-injury-surveillance.bat** to stop the PHP server. Your PostgreSQL Windows service is left running.
 
-Do not close the small “HISS PHP server” window while using the site — closing it stops PHP.
+To put the original demo records back, run **reset-database.bat**. It replaces the HISS tables, so only use it when you want a clean start. See `README-START-HERE.md` for the equivalent commands.
+
+Do not close the small "HISS PHP server" window while using the site — closing it stops PHP.
 
 ## Accounts
 
@@ -34,7 +36,8 @@ Do not close the small “HISS PHP server” window while using the site — clo
 ## Files
 
 ```
-config.php          database settings (HISS, port 55432)
+config.php          database settings (HISS on port 5432)
+create-database.sql creates the HISS database with the correct capital letters
 database.sql        tables, roles and sample cases
 index.php           sign-in page
 dashboard.php       summary counts
@@ -46,14 +49,7 @@ export.php          CSV download
 users.php           admin: manage accounts
 includes/           database connection, helpers and page layout
 assets/             stylesheet and a little JavaScript
-```
-
-## Using your main PostgreSQL instead
-
-If you already have PostgreSQL running on the usual port 5432 and want to use that instead of the bundled cluster, edit `config.php`: set `port` to `5432` and put your PostgreSQL password in `password`. Create the `HISS` database and load `database.sql` into it, then start only the PHP server:
-
-```
-runtime\php\php.exe -S 127.0.0.1:8000 -t .
+runtime/php/        portable PHP 8.6 with pdo_pgsql enabled
 ```
 
 ## Notes

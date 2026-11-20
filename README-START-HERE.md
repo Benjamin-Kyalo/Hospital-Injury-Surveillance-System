@@ -10,14 +10,12 @@ Hospital Injury Surveillance System\
   database.sql, create-database.sql          database setup
   config.php                                 database connection settings
   runtime\php\                               portable PHP 8.6
-  runtime\pgdata\                            this project's PostgreSQL data
-  runtime\logs\                              server logs
   start-injury-surveillance.bat
   stop-injury-surveillance.bat
   reset-database.bat
 ```
 
-The app uses the `HISS` database on port 55432. Your main PostgreSQL service on port 5432 is untouched.
+The app uses the **HISS** database in your **existing PostgreSQL 18** installation (Windows service `postgresql-x64-18`, port 5432). The main service stays running when you stop this app.
 
 ## Easiest way
 
@@ -27,45 +25,57 @@ Sign in with `admin` / `Admin@123`. Other accounts are listed in `README.md`.
 
 Double-click **stop-injury-surveillance.bat** when finished.
 
-## Commands instead of double-clicking
-
-Open PowerShell, go to this folder, and run:
+## Commands in PowerShell
 
 ```powershell
 cd "C:\Users\Admin IT\Downloads\CS50\Hospital Injury Surveillance System"
 .\start-injury-surveillance.bat
 ```
 
-Then open http://localhost:8000/ in your browser. To shut down:
+Then open http://localhost:8000/. To stop only this app:
 
 ```powershell
 .\stop-injury-surveillance.bat
 ```
 
-## Manual commands (what the start script does)
+## Syncing / loading the data into the existing database
 
-From the same folder:
+If the HISS database is empty, or you want to put back the original demo data, run these from the same folder (password is `1234`):
 
 ```powershell
-# 1. Start PostgreSQL for this project
-& "C:\Program Files\PostgreSQL\18\bin\pg_ctl.exe" `
-  -D "$PWD\runtime\pgdata" `
-  -o "-p 55432 -h 127.0.0.1" `
-  -l "$PWD\runtime\logs\postgres.log" start
+$env:PGPASSWORD = "1234"
+$pg = "C:\Program Files\PostgreSQL\18\bin"
 
-# 2. First time only: create the HISS database and load the tables
-& "C:\Program Files\PostgreSQL\18\bin\psql.exe" -h 127.0.0.1 -p 55432 -U postgres -d postgres -f "$PWD\create-database.sql"
-& "C:\Program Files\PostgreSQL\18\bin\psql.exe" -h 127.0.0.1 -p 55432 -U postgres -d HISS -f "$PWD\database.sql"
+# Create HISS only if it does not exist yet
+& "$pg\psql.exe" -h 127.0.0.1 -p 5432 -U postgres -d postgres -f ".\create-database.sql"
 
-# 3. Start PHP's built-in server
+# Load tables, roles, demo users and 16 sample cases into HISS
+& "$pg\psql.exe" -h 127.0.0.1 -p 5432 -U postgres -d HISS -f ".\database.sql"
+
+# Check it worked
+& "$pg\psql.exe" -h 127.0.0.1 -p 5432 -U postgres -d HISS -c "SELECT count(*) AS cases FROM injury_cases; SELECT count(*) AS users FROM users;"
+```
+
+Expected result: `cases = 16` and `users = 4`.
+
+Warning: `database.sql` replaces the HISS tables. Do not run it if you have added real cases you want to keep. `reset-database.bat` does the same thing after asking for confirmation.
+
+## Manual start commands (what the start script does)
+
+```powershell
+# Check the main PostgreSQL service is running
+Get-Service postgresql-x64-18
+
+# Start only PHP's built-in server (leave this window open)
 & "$PWD\runtime\php\php.exe" -S 127.0.0.1:8000 -t "$PWD"
 ```
 
-Leave that PHP command running while you use the site. To stop things:
+Stop with:
 
 ```powershell
 Stop-Process -Name php -Force
-& "C:\Program Files\PostgreSQL\18\bin\pg_ctl.exe" -D "$PWD\runtime\pgdata" -m fast stop
 ```
 
-`reset-database.bat` puts the original 16 demo cases back if you change data.
+## Changing the database connection
+
+Edit `config.php`. Current values are host `127.0.0.1`, port `5432`, database `HISS`, user `postgres`, password `1234`. The app reads these values on every request, so no restart of PostgreSQL is needed — just refresh the page.

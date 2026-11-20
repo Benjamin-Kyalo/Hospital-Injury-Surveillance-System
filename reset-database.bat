@@ -2,6 +2,8 @@
 setlocal
 set "ROOT=%~dp0"
 set "APP=%ROOT%"
+set "PGPORT=5432"
+set "PGPASSWORD=1234"
 
 set "PGBIN="
 for /f "tokens=3,*" %%A in ('reg query "HKLM\SOFTWARE\PostgreSQL\Installations" /s /v "Base Directory" ^| findstr /i "REG_SZ"') do set "PGBIN=%%B\bin"
@@ -11,9 +13,10 @@ if "%PGBIN%"=="" (
     exit /b 1
 )
 
-echo This drops the HISS tables and puts back the original demo data.
-set /p answer=Continue? (y/n): 
+echo This replaces the HISS tables on port %PGPORT% with the original demo data.
+echo Any cases or users you added will be lost.
+set /p answer=Continue? (y/n):
 if /i not "%answer%"=="y" exit /b 0
 
-"%PGBIN%\psql.exe" -h 127.0.0.1 -p 55432 -U postgres -d HISS -f "%APP%\database.sql"
+"%PGBIN%\psql.exe" -h 127.0.0.1 -p %PGPORT% -U postgres -d HISS -w -f "%APP%database.sql"
 pause

@@ -1,11 +1,10 @@
 <?php
-// Database settings for the local PostgreSQL cluster in runtime\pgdata.
-// No XAMPP needed. If you use your main PostgreSQL instead, change the port
-// to 5432 and fill in your own password.
+// Connects to the HISS database in your existing PostgreSQL 18 installation
+// (the Windows service running on port 5432). No XAMPP needed.
 return [
     'host'     => '127.0.0.1',
-    'port'     => '55432',
+    'port'     => '5432',
     'dbname'   => 'HISS',
     'user'     => 'postgres',
-    'password' => '',
+    'password' => '1234',
 ];
