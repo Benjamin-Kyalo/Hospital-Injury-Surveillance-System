@@ -109,12 +109,26 @@ function valid_date(?string $date): bool
     return $parsed && $parsed->format('Y-m-d') === $date;
 }
 
-// Shows the number the next case will get without consuming a sequence value.
+// Shows the next value in a sequence without consuming it.
+function peek_sequence(PDO $pdo, string $name): int
+{
+    if (!in_array($name, ['case_ref_seq', 'patient_code_seq'], true)) {
+        throw new InvalidArgumentException('Unknown sequence.');
+    }
+    $stmt = $pdo->prepare("SELECT last_value, is_called FROM $name");
+    $stmt->execute();
+    $seq = $stmt->fetch();
+    return ($seq && $seq['is_called']) ? (int) $seq['last_value'] + 1 : (int) ($seq['last_value'] ?? 0);
+}
+
 function preview_case_reference(PDO $pdo): string
 {
-    $seq = $pdo->query('SELECT last_value, is_called FROM case_ref_seq')->fetch();
-    $next = ($seq && $seq['is_called']) ? (int) $seq['last_value'] + 1 : (int) ($seq['last_value'] ?? 0);
-    return sprintf('INJ-%s-%04d', date('Y'), $next);
+    return sprintf('INJ-%s-%04d', date('Y'), peek_sequence($pdo, 'case_ref_seq'));
+}
+
+function preview_patient_code(PDO $pdo): string
+{
+    return sprintf('PT-%04d', peek_sequence($pdo, 'patient_code_seq'));
 }
 
 function query_value(string $key): string

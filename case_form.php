@@ -22,6 +22,7 @@ if ($editing) {
 }
 
 $reference_preview = $editing ? $case['case_reference'] : preview_case_reference($pdo);
+$code_preview      = $editing ? $case['patient_code'] : preview_patient_code($pdo);
 
 $mechanism_form = ['' => 'Select mechanism'] + array_slice($mechanism_options, 1, null, true);
 $injury_form    = ['' => 'Select injury type'] + $injury_options;
@@ -50,7 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'notes'         => trim((string) ($_POST['notes'] ?? '')),
     ];
 
-    foreach (['patient_code', 'incident_date', 'mechanism', 'injury_type', 'body_part', 'classification', 'outcome'] as $field) {
+    foreach (['incident_date', 'mechanism', 'injury_type', 'body_part', 'classification', 'outcome'] as $field) {
         if ($data[$field] === '') {
             $errors[] = 'Please fill in ' . str_replace('_', ' ', $field) . '.';
         }
@@ -83,6 +84,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (!$errors) {
+        if ($editing) {
+            $data['patient_code'] = $case['patient_code'];
+        } else {
+            $next = (int) $pdo->query("SELECT nextval('patient_code_seq')")->fetchColumn();
+            $data['patient_code'] = sprintf('PT-%04d', $next);
+        }
+
         $params = [
             ':patient_code'  => $data['patient_code'],
             ':patient_name'  => $data['patient_name'] === '' ? null : $data['patient_name'],
@@ -177,10 +185,9 @@ include __DIR__ . '/includes/header.php';
     <h2>Patient and incident</h2>
     <div class="formgrid">
       <div class="field">
-        <label for="patient_code">Patient code *</label>
-        <input type="text" id="patient_code" name="patient_code" maxlength="40" required
-               value="<?= value_of('patient_code', $case) ?>">
-        <small>Example: PT-1042</small>
+        <label for="patient_code">Patient code</label>
+        <input type="text" id="patient_code" value="<?= e($code_preview) ?>" readonly>
+        <small><?= $editing ? 'This code stays the same when you edit the case.' : 'Assigned automatically when the case is saved.' ?></small>
       </div>
       <div class="field">
         <label for="patient_name">Patient name</label>

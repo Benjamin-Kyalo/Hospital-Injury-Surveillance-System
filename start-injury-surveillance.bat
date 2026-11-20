@@ -53,6 +53,12 @@ if not errorlevel 1 (
     "%PGBIN%\psql.exe" -h 127.0.0.1 -p %PGPORT% -U postgres -d HISS -w -f "%APP%migration-add-patient-name.sql"
 )
 
+"%PGBIN%\psql.exe" -h 127.0.0.1 -p %PGPORT% -U postgres -d HISS -w -tAc "select count(*) from pg_class where relname='patient_code_seq'" | findstr /r /c:"^0$" >nul
+if not errorlevel 1 (
+    echo Adding the patient code sequence ...
+    "%PGBIN%\psql.exe" -h 127.0.0.1 -p %PGPORT% -U postgres -d HISS -w -f "%APP%migration-add-patient-code.sql"
+)
+
 echo Starting PHP on http://localhost:%WEBPORT% ...
 start "HISS PHP server" /MIN "%PHP%" -S 127.0.0.1:%WEBPORT% -t "%APP%"
 

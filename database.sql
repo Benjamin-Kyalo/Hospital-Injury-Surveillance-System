@@ -25,6 +25,7 @@ CREATE TABLE users (
 );
 
 CREATE SEQUENCE case_ref_seq START 1;
+CREATE SEQUENCE patient_code_seq START 1001;
 
 CREATE TABLE injury_cases (
     case_id        SERIAL PRIMARY KEY,
@@ -109,3 +110,4 @@ UPDATE injury_cases SET patient_name = CASE patient_code
 END;
 
 SELECT setval('case_ref_seq', 16, TRUE);
+SELECT setval('patient_code_seq', 1016, TRUE);

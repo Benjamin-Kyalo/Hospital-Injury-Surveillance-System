@@ -68,6 +68,8 @@ To add the patient name field to an existing HISS database **without losing any 
 
 The start script also runs this automatically the first time it finds an older database without the `patient_name` column.
 
+Patient codes are numbered from a second sequence. If an older database does not have it yet, the start script runs `migration-add-patient-code.sql`, which continues from the highest code already stored. Or run it yourself with the same `psql` command, changing the `-f` filename.
+
 ## Manual start commands (what the start script does)
 
 ```powershell

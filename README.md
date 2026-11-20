@@ -29,7 +29,7 @@ Do not close the small "HISS PHP server" window while using the site — closing
 
 - Sign in and sign out, with role-based menus.
 - Add, view, search and edit injury cases with both a patient code and an optional patient name. The search box on Cases and Reports finds cases by reference, code or name.
-- Case references such as `INJ-2026-0016` are assigned automatically. The New Case form shows the next number as a read-only field; editing a case shows its existing number.
+- Case references (`INJ-2026-0016`) and patient codes (`PT-1016`) are assigned automatically from PostgreSQL sequences. The New Case form shows both next values as read-only fields; editing a case shows its existing values, which never change.
 - Dashboard with basic counts and summaries.
 - Reports with filters and a CSV download for admin and records users.
 - Admin screen for creating accounts, changing roles and disabling accounts.
@@ -41,6 +41,7 @@ config.php          database settings (HISS on port 5432)
 create-database.sql creates the HISS database with the correct capital letters
 database.sql        tables, roles and sample cases
 migration-add-patient-name.sql  adds the name field without removing existing data
+migration-add-patient-code.sql  adds the patient code sequence to an existing database
 index.php           sign-in page
 dashboard.php       summary counts
 cases.php           search and list
