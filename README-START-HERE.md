@@ -5,7 +5,7 @@ Everything is inside this folder:
 ```
 Hospital Injury Surveillance System\
   index.php, dashboard.php, cases.php, ...   the PHP app
-  case_delete.php, roles.php                 deletion and role management
+  case_delete.php, users.php                 deletion; account and role management
   assets\                                    CSS and JavaScript
   includes\                                  shared PHP helpers and layout
   database.sql, create-database.sql          database setup

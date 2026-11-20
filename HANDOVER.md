@@ -64,15 +64,15 @@ Permissions are stored as a comma-separated string in the `roles.permissions` co
 | `records` | `view,export` | Search, view reports, download CSV |
 | `viewer` | `view` | View cases and reports only |
 
-The five valid permission names are defined in `$permission_options` at the bottom of `includes/common.php` and can be assigned on the **Roles** page (`roles.php`). The navigation bar in `includes/header.php` hides "New case" unless `can('create')`, and hides "Users" and "Roles" unless `can('manage_users')`. Pages themselves are protected by `require_login()` or `require_permission('...')`, so hiding a link is not the only protection.
+The five valid permission names are defined in `$permission_options` at the bottom of `includes/common.php` and can be assigned on the **Roles & permissions** tab of `users.php` — there is no separate Roles page. The navigation bar in `includes/header.php` hides "New case" unless `can('create')`, and hides "Users & roles" unless `can('manage_users')`. Pages themselves are protected by `require_login()` or `require_permission('...')`, so hiding a link is not the only protection.
 
 ### 1.3.1 CRUD matrix (what can be changed by whom)
 
 | Data | Create | Read | Update | Delete |
 | --- | --- | --- | --- | --- |
 | Cases (`injury_cases`) | `create` — `case_form.php` | `view` — `cases.php`, `case_view.php`, `reports.php`, `export.php` | `create` — `case_form.php` | `delete` — `case_delete.php` |
-| Accounts (`users`) | `manage_users` — `users.php?action=new` | `manage_users` — `users.php` | `manage_users` — `users.php?action=edit` (includes disable) | `manage_users` **and** `delete` — `users.php` |
-| Roles (`roles`) | `manage_users` — `roles.php?action=new` | `manage_users` — `roles.php` | `manage_users` — `roles.php?action=edit` | `manage_users` **and** `delete` — `roles.php` |
+| Accounts (`users`) | `manage_users` — `users.php?tab=accounts&action=new` | `manage_users` — `users.php?tab=accounts` | `manage_users` — `users.php?tab=accounts&action=edit` (includes disable and password reset) | `manage_users` **and** `delete` — `users.php` |
+| Roles (`roles`) | `manage_users` — `users.php?tab=roles&action=new` | `manage_users` — `users.php?tab=roles` | `manage_users` — `users.php?tab=roles&action=edit` | `manage_users` **and** `delete` — `users.php` |
 
 Every write operation is:
 
@@ -81,7 +81,7 @@ Every write operation is:
 - **server-side checked** — `require_permission()` runs before any SQL;
 - **parameterised** — all values are bound with PDO placeholders.
 
-Extra safety rules: you cannot delete your own account, you cannot delete the last administrator, you cannot delete a role that still has accounts, and you cannot remove account/role management from your own role. See section 8.9.
+Extra safety rules: you cannot delete or deactivate your own account, move your own account to a role without `manage_users`, delete the last administrator, delete a role that still has accounts, or remove account/role management from your own role. See section 8.9.
 
 ### 1.4 A normal user journey
 
@@ -155,8 +155,8 @@ Hospital Injury Surveillance System\
 ├── case_delete.php               Delete a case (POST, CSRF, delete permission)
 ├── reports.php                   Filtered report totals
 ├── export.php                    CSV download (permission: export)
-├── users.php                     Admin account management (permission: manage_users)
-├── roles.php                     Admin role/permission management (permission: manage_users)
+├── users.php                     Admin: Accounts and Roles tabs, full CRUD for both
+├── roles.php                     Compatibility redirect to users.php?tab=roles (no UI)
 ├── logout.php                    Ends the session
 ├── config.php                    Database connection settings
 │
@@ -205,8 +205,7 @@ Hospital Injury Surveillance System\
 | `cases.php` | Builds a `SELECT` using `case_filter_sql()` and lists up to 100 newest matching cases, ordered by incident date. Shows Edit (if `create`) and Delete (if `delete`) actions. |
 | `reports.php` | Uses the same filters and runs `COUNT(*)`, `GROUP BY mechanism`, `GROUP BY outcome`, `GROUP BY classification`, and a monthly grouping with `to_char(incident_date, 'YYYY-MM')`. |
 | `export.php` | Same filters as reports, but outputs CSV with `fputcsv()`. Requires the `export` permission. |
-| `users.php` | Requires `manage_users`; creation/edit/removal of accounts. Delete additionally requires `delete`, blocks self-delete and deleting the last admin. Passwords are stored with `password_hash($password, PASSWORD_BCRYPT)`. |
-| `roles.php` | Requires `manage_users`; full CRUD for roles and their permission strings. Delete additionally requires `delete` and refuses roles that still have accounts. Editing your own role may not remove `manage_users`. |
+| `users.php` | The single administration page. Requires `manage_users`; `?tab=accounts` handles full account CRUD and `?tab=roles` handles full role CRUD. Delete additionally requires `delete`. All write actions are POST-only with CSRF and use distinct `action` values (`account_create/update/delete`, `role_create/update/delete`). Blocks self-delete, self-deactivation, moving yourself off `manage_users`, deleting the last admin and deleting a role in use. Passwords use `password_hash($password, PASSWORD_BCRYPT)`. |
 | `database.sql` | Drops and recreates `injury_cases`, `users`, `roles`, `case_ref_seq`, `patient_code_seq`, then inserts demo data. **Destructive.** `recorded_by` uses `ON DELETE SET NULL`. |
 | `migration-*.sql` | Non-destructive additions for databases created by older versions. Safe to run more than once. The start script applies any that are missing. |
 
@@ -264,10 +263,10 @@ Example: user searches for `Amina` in `cases.php`.
 Deletes never happen through a link — they are POST forms with a CSRF token. There are three places to know:
 
 1. **Case:** the Delete button on `cases.php` or `case_view.php` posts `case_id` to `case_delete.php`. That file requires `delete`, checks CSRF, reads the reference for the success message, runs `DELETE FROM injury_cases WHERE case_id = :id`, flashes a message and redirects to `cases.php`.
-2. **Account:** the Delete button on `users.php` posts `action=delete` and `user_id` to the same page. Before deleting, the code blocks self-deletion and checks that at least one admin remains. Because `injury_cases.recorded_by` is `ON DELETE SET NULL`, the cases stay and show "unknown user" as the recorder.
-3. **Role:** the Delete button on `roles.php` posts `action=delete` and `role_id`. The server counts accounts using that role and refuses if the count is above zero (otherwise those accounts would lose their role link).
+2. **Account:** the Delete button on the Accounts tab of `users.php` posts `action=account_delete` and `user_id` to the same page. Before deleting, the code blocks self-deletion and checks that at least one admin remains. Because `injury_cases.recorded_by` is `ON DELETE SET NULL`, the cases stay and show "unknown user" as the recorder.
+3. **Role:** the Delete button on the Roles tab of `users.php` posts `action=role_delete` and `role_id`. The server counts accounts using that role and refuses if the count is above zero (otherwise those accounts would lose their role link).
 
-All three catch `PDOException`, write details to the PHP error log and show a neutral error message to the user.
+All three catch `PDOException`, write details to the PHP error log and show a neutral error message to the user. The hidden `tab` field in every form makes the page return to the same tab after a failed validation or a redirect.
 
 ### 4.5 Security measures that are actually implemented
 
@@ -280,11 +279,12 @@ All three catch `PDOException`, write details to the PHP error log and show a ne
 | Session ID regeneration at login | `index.php` line 31 |
 | HTTP-only, SameSite=Lax session cookie | `includes/common.php` lines 3–8 |
 | Role checks on pages and menu items | `require_permission()` and `can()` |
-| Destructive actions are POST-only with CSRF | `case_delete.php`, `users.php`, `roles.php` |
-| Own-account deactivation/deletion blocked | `users.php` |
+| Destructive actions are POST-only with CSRF | `case_delete.php` and all delete forms in `users.php` |
+| Own-account deactivation/deletion blocked | `users.php` (account branch) |
+| Cannot move your own account off `manage_users` | `users.php` (account branch) |
 | Last administrator cannot be deleted | `users.php` (admin role count) |
-| Role in use cannot be deleted | `roles.php` (user count per role) |
-| Cannot remove your own role's `manage_users` | `roles.php` |
+| Role in use cannot be deleted | `users.php` (role branch, user count per role) |
+| Cannot remove your own role's `manage_users` | `users.php` (role branch) |
 | Deleting an account keeps its cases | `injury_cases.recorded_by ... ON DELETE SET NULL` |
 
 Known limitation for a handover: PHP's built-in server is intended for development. See section 5.5 for deployment guidance.
@@ -393,7 +393,7 @@ The PHP built-in server is a development tool. For a real deployment:
 6. Schedule regular `pg_dump` backups.
 7. Remove or protect `reset-database.bat`, `database.sql` and the migration scripts on a production server.
 8. Replace the demo accounts and remove all synthetic cases before real use. The system currently has no audit trail and no password reset flow. Deletions in particular are not logged anywhere except the PHP error log when they fail — add an audit table before using this with real records.
-9. Decide who gets the `delete` permission. It is granted only to `admin` in the demo data; grant it to another role on the Roles page only if that role really needs it.
+9. Decide who gets the `delete` permission. It is granted only to `admin` in the demo data; grant it to another role on the Users & roles → Roles & permissions tab only if that role really needs it.
 10. `runtime\pgdata` and `runtime\logs` are leftovers from an unused test cluster. They are not needed by the running app and can be removed from a deployment.
 
 ---
@@ -517,20 +517,20 @@ Numbers are not recycled: after deleting case 17, the next case still gets refer
 
 ### 6.13 Delete a staff account
 
-1. Sign in as admin and open **Users**.
+1. Sign in as admin and open **Users & roles**. The **Accounts** tab is shown first.
 2. Use the Delete link on the account. The row for your own account shows "You" instead — nobody can delete themselves.
 3. Confirm. The server refuses if this is the only administrator.
 4. Cases recorded by that account remain in the register. On the case details page the recorder is shown as "unknown user" because `recorded_by` is set to NULL.
 
-To keep a safer history, disable the account (untick **Account active**) instead of deleting it. Disabling preserves the name on case records.
+To keep a safer history, disable the account (untick **Account active**) instead of deleting it. Disabling preserves the name on case records. The Edit link also lets you change another user's username, full name, role and password (leave the password blank to keep it).
 
 ### 6.14 Add, edit or delete a role
 
-1. Sign in as admin and open **Roles**.
+1. Sign in as admin and open **Users & roles**, then choose the **Roles & permissions** tab. There is no separate Roles page or menu item.
 2. **Add a role:** click *Add a role*, enter a lowercase name such as `data_clerk`, a description, and tick the permissions it needs.
 3. **Edit a role:** click Edit on its row. Change the description or permissions. Users must sign out and back in before they notice a permission change, because permissions are copied into the session at login.
-4. **Delete a role:** use the Delete link. The server refuses while any account still uses that role — move those accounts to a different role first.
-5. You cannot remove `manage_users` from your own role, because that would lock you out of account and role management.
+4. **Delete a role:** use the Delete link. The server refuses while any account still uses that role — move those accounts to a different role on the Accounts tab first.
+5. You cannot remove `manage_users` from your own role, because that would lock you out of account and role management. You also cannot move your own account to a role without `manage_users`.
 
 Valid permissions are `view`, `create`, `export`, `manage_users` and `delete`. They are defined in `$permission_options` in `includes/common.php` and checked with `can()` / `require_permission()` throughout the app.
 
@@ -587,11 +587,12 @@ Work through this list before digging deeper:
 | CSV has PHP warnings at the top | Old `fputcsv()` call without escape argument | `export.php` now passes `',', '"', '\\'` to both `fputcsv()` calls; keep those arguments |
 | Edit form rejects time `09:15:00` | PostgreSQL TIME includes seconds | `case_form.php` trims to `HH:MM` when loading and validates `HH:MM` or `HH:MM:SS` |
 | Styling looks broken | Browser cached old CSS, or wrong path | Hard refresh; confirm `assets/style.css` is reachable at `http://localhost:8000/assets/style.css` |
-| Delete button not visible | Account lacks `delete` (or `manage_users` for accounts/roles) | Sign in as admin, check **Roles**, then sign out and back in |
+| Delete button not visible | Account lacks `delete` (or `manage_users` for accounts/roles) | Sign in as admin, check the **Roles & permissions** tab, then sign out and back in |
 | Delete attempt returns HTTP 403 | Missing/invalid CSRF token, or permission missing | Reload the page for a fresh token, sign in again after role changes |
-| "This is the last administrator account" | Only one admin exists | Create another admin (Users → Add a user, role `admin`) first |
+| "This is the last administrator account" | Only one admin exists | Create another admin (Users & roles → Accounts → Add a user, role `admin`) first |
 | "You cannot delete your own account" | Normal safety rule | Sign in with a different admin account |
-| "Role ... is still assigned to N account(s)" | Accounts still reference the role | Edit those accounts and choose another role, then delete |
+| "You cannot move your own account to a role without account/role management" | Normal lockout protection | Give your account a role with `manage_users`; edit another account instead |
+| "Role ... is still assigned to N account(s)" | Accounts still reference the role | Edit those accounts on the Accounts tab and choose another role, then delete the role |
 | "You cannot remove account/role management from your own role" | Normal lockout protection | Keep `manage_users` on your own role; remove it from a different role |
 | Deleting an account fails with a foreign key error | `recorded_by` FK not updated by migration | Run `migration-fix-recorded-by-delete.sql` |
 | Case shows "unknown user" as recorder | The recording account was deleted | Expected: `recorded_by` was set to NULL to keep the case |
@@ -745,7 +746,7 @@ Work through these in order:
 
 | Username | Password | Role | Menu access |
 | --- | --- | --- | --- |
-| admin | Admin@123 | admin | Dashboard, Cases, New case, Reports, Users, Roles; can delete cases, accounts and roles |
+| admin | Admin@123 | admin | Dashboard, Cases, New case, Reports, Users & roles (both tabs); can delete cases, accounts and roles |
 | nurse1 | Nurse@123 | officer | Dashboard, Cases, New case, Reports; add/edit cases, no deletion |
 | records1 | Records@123 | records | Dashboard, Cases, Reports (CSV allowed), no deletion |
 | viewer1 | View@123 | viewer | Dashboard, Cases, Reports (read only) |

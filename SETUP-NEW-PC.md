@@ -155,18 +155,18 @@ Work through this short test on the new PC. It also proves that Create, Read, Up
 
 | # | Action | Expected result |
 | --- | --- | --- |
-| 1 | Sign in as `admin`. | Dashboard opens; menu shows Dashboard, Cases, New case, Reports, Users, Roles. |
+| 1 | Sign in as `admin`. | Dashboard opens; menu shows Dashboard, Cases, New case, Reports, Users & roles. |
 | 2 | Click **New case**. | Two read-only fields show the next reference (`INJ-2026-0017`) and patient code (`PT-1017`) after a fresh load of `database.sql`. If you copied an existing database, the numbers continue from its last case. |
 | 3 | Fill the required fields, enter patient name `Local Test`, click **Save case**. | Details page opens with the saved reference and name. |
 | 4 | On **Cases**, search `Local Test`. | The new case appears. Search `PT-1017` and the reference shown in step 2 too — each finds it. |
 | 5 | Click **Edit** on the test case, change the notes, save. | Details page shows the new notes and a "Last updated" time. |
 | 6 | Click **Delete this case** on the test case, accept the confirmation. | Case disappears from the list; a success message appears. |
-| 7 | **Users → Add a user** named `localtest`, role `officer`, password `Local@1234`. | User appears in the table. |
-| 8 | **Users → Delete** `localtest`, accept the confirmation. | User disappears; a success message says their cases are kept. |
-| 9 | **Roles → Add a role** named `localrole`, permission *View cases and reports*, then Edit it and add *Create and edit cases*. | Table shows `view, create` for that role. |
-| 10 | **Roles → Delete** `localrole`. | Role is removed (it has no accounts). |
+| 7 | Open **Users & roles** (Accounts tab) → **Add a user** named `localtest`, role `officer`, password `Local@1234`. | User appears in the table. |
+| 8 | On the Accounts tab, **Delete** `localtest`, accept the confirmation. | User disappears; a success message says their cases are kept. |
+| 9 | Open the **Roles & permissions** tab → **Add a role** named `localrole`, permission *View cases and reports*, then Edit it and add *Create and edit cases*. | Table shows `view, create` for that role. |
+| 10 | On the Roles tab, **Delete** `localrole`. | Role is removed (it has no accounts). |
 | 11 | **Reports →** apply a filter, then **Download CSV**. | A `.csv` file downloads and opens with a header row including "Patient name". |
-| 12 | Sign out, sign in as `viewer1` / `View@123`. | No New case, Users or Roles links; no Delete links. |
+| 12 | Sign out, sign in as `viewer1` / `View@123`. | No New case, Users & roles or Delete links. |
 | 13 | Run `.\stop-injury-surveillance.bat`, then refresh the browser. | The site no longer loads — only PHP was stopped. |
 
 If all 13 pass, the copy is working. Delete any test records you left behind.
@@ -205,7 +205,7 @@ After a PC restart, PostgreSQL normally starts with Windows but PHP does not —
 | Browser shows `localhost refused to connect` | PHP not running, or different port | Run the start script; check the `WEBPORT` value. |
 | White page / PHP error text | Missing PHP extension or syntax error | Run `& ".\runtime\php\php.exe" -m`; run `& ".\runtime\php\php.exe" -l <file>`. |
 | Password prompt from `psql` | Batch scripts use `-w` and rely on `PGPASSWORD` | Set `$env:PGPASSWORD = "1234"` in PowerShell or fix the batch files. |
-| Delete links missing | Account lacks the `delete` permission | Sign in as admin, check **Roles**, then sign out and back in. |
+| Delete links missing | Account lacks the `delete` permission | Sign in as admin, check the **Roles & permissions** tab, then sign out and back in. |
 | Search finds nothing | Filters still active | Click **Clear** on Cases or Reports. |
 
 ---

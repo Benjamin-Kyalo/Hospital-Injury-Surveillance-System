@@ -39,8 +39,9 @@ If you change the PostgreSQL `postgres` password, update both `config.php` and t
 - Case references (`INJ-2026-0016`) and patient codes (`PT-1016`) are assigned automatically from PostgreSQL sequences. The New Case form shows both next values as read-only fields; editing a case shows its existing values, which never change. Deleting a case does not reuse its numbers.
 - Dashboard with basic counts and summaries.
 - Reports with filters and a CSV download for admin and records users.
-- **Accounts — full CRUD:** admins can create, view, edit, disable and delete staff accounts. You cannot delete yourself or the last administrator. Cases recorded by a deleted account are kept, with the recorder shown as "unknown user".
-- **Roles — full CRUD:** admins can create, view, edit and delete roles and choose their permissions. A role that still has accounts cannot be deleted. Users must sign out and back in after their role's permissions change.
+- **Users & roles — one admin page with two tabs** at `users.php`: admins can create, view, edit, disable and delete other staff accounts, and create, view, edit and delete roles and their permissions. No separate Roles page or menu item.
+- Account safety: you cannot delete yourself, deactivate yourself, move yourself to a role without `manage_users`, or delete the last administrator. Cases recorded by a deleted account are kept, with the recorder shown as "unknown user".
+- Role safety: a role that still has accounts cannot be deleted, and you cannot remove `manage_users` from your own role. Users must sign out and back in after their role's permissions change.
 - Every change is protected: POST-only actions, CSRF tokens, prepared statements, and permission checks on the server.
 
 ## CRUD and permissions at a glance
@@ -51,7 +52,7 @@ If you change the PostgreSQL `postgres` password, update both `config.php` and t
 | Accounts | `manage_users` (admin) | `manage_users` (admin) | `manage_users` (admin) | `manage_users` + `delete` (admin) |
 | Roles | `manage_users` (admin) | `manage_users` (admin) | `manage_users` (admin) | `manage_users` + `delete` (admin) |
 
-Permission names are stored in the `roles.permissions` column and can be changed on the **Roles** page or in `database.sql`.
+Open `users.php` and use the **Accounts** tab for people and the **Roles & permissions** tab for their access. Permission names are stored in the `roles.permissions` column and can be changed there or in `database.sql`.
 
 ## Files
 
@@ -71,8 +72,8 @@ case_form.php       add / edit case
 case_delete.php     delete case (POST, CSRF, delete permission)
 reports.php         filtered summaries
 export.php          CSV download
-users.php           admin: create, edit and delete accounts
-roles.php           admin: create, edit and delete roles and permissions
+users.php           admin: Accounts and Roles tabs; full CRUD for accounts, roles and permissions
+roles.php           compatibility redirect to users.php?tab=roles (no duplicate interface)
 logout.php          ends the session
 includes/           database connection, helpers and page layout
 assets/             stylesheet and a little JavaScript

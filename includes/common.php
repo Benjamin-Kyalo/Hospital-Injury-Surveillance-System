@@ -252,7 +252,7 @@ $sex_options = [
     'Female'       => 'Female',
 ];
 
-// Permissions that can be given to a role in roles.php.
+// Permissions that can be given to a role on the Users & roles page (users.php).
 // Keep this list in step with the require_permission()/can() checks in the pages.
 $permission_options = [
     'view'         => 'View cases and reports',
