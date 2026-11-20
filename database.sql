@@ -5,6 +5,7 @@
 DROP TABLE IF EXISTS injury_cases;
 DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS roles;
+DROP TABLE IF EXISTS app_settings;
 DROP SEQUENCE IF EXISTS case_ref_seq;
 DROP SEQUENCE IF EXISTS patient_code_seq;
 
@@ -14,6 +15,13 @@ CREATE TABLE roles (
     description VARCHAR(120) NOT NULL,
     permissions TEXT NOT NULL
 );
+
+-- Settings editable by an administrator on the Users and roles page.
+CREATE TABLE app_settings (
+    setting_key   VARCHAR(50) PRIMARY KEY,
+    setting_value TEXT NOT NULL
+);
+INSERT INTO app_settings (setting_key, setting_value) VALUES ('hospital_name', 'General Hospital');
 
 CREATE TABLE users (
     user_id      SERIAL PRIMARY KEY,

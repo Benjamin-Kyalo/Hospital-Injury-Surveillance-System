@@ -79,7 +79,7 @@ Warning: `database.sql` replaces the HISS tables. Do not run it if you have adde
 
 ## Migrations for databases created by an older version
 
-All four migrations are non-destructive and safe to run more than once. The start script applies them automatically when needed, or you can run them yourself with the same `psql` command and a different `-f` filename:
+All five migrations are non-destructive and safe to run more than once. The start script applies them automatically when needed, or you can run them yourself with the same `psql` command and a different `-f` filename:
 
 ```powershell
 $env:PGPASSWORD = "1234"
@@ -89,6 +89,7 @@ $pg = "C:\Program Files\PostgreSQL\18\bin"
 & "$pg\psql.exe" -h 127.0.0.1 -p 5432 -U postgres -d HISS -f ".\migration-add-patient-code.sql"
 & "$pg\psql.exe" -h 127.0.0.1 -p 5432 -U postgres -d HISS -f ".\migration-add-delete-permission.sql"
 & "$pg\psql.exe" -h 127.0.0.1 -p 5432 -U postgres -d HISS -f ".\migration-fix-recorded-by-delete.sql"
+& "$pg\psql.exe" -h 127.0.0.1 -p 5432 -U postgres -d HISS -f ".\migration-add-settings.sql"
 ```
 
 | File | What it adds |
@@ -97,6 +98,7 @@ $pg = "C:\Program Files\PostgreSQL\18\bin"
 | `migration-add-patient-code.sql` | `patient_code_seq`, starting after the highest existing code |
 | `migration-add-delete-permission.sql` | `delete` permission for the built-in admin role |
 | `migration-fix-recorded-by-delete.sql` | `ON DELETE SET NULL` on `injury_cases.recorded_by`, so deleting an account keeps its cases |
+| `migration-add-settings.sql` | `app_settings` table with the editable `hospital_name` shown in the header/footer |
 
 After a permissions change, affected users must sign out and back in.
 

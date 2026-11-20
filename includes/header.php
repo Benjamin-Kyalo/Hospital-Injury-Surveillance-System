@@ -2,6 +2,7 @@
 $page_title = $page_title ?? 'Injury Surveillance';
 $user = current_user();
 $current_page = basename($_SERVER['PHP_SELF']);
+$hospital_name = isset($pdo) ? get_setting($pdo, 'hospital_name', 'General Hospital') : 'General Hospital';
 ?>
 <!doctype html>
 <html lang="en">
@@ -17,7 +18,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
   <div class="wrap topbar-inner">
     <div class="brand">
       <strong>Injury Surveillance</strong>
-      <span>Final year project &middot; KCA University</span>
+      <span><?= e($hospital_name) ?></span>
     </div>
     <?php if ($user): ?>
       <div class="topbar-user">

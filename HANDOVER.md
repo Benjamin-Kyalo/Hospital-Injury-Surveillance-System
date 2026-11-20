@@ -40,7 +40,7 @@ Stop it with:
 
 ### 1.1 Purpose
 
-The system is a small web prototype for recording, searching and reporting injury cases at a hospital. It replaces paper registers with a searchable database. It uses **patient codes and optional patient names**, not real personally identifying details. The footer on every page says: *"Demo data only. Do not enter real patient details."*
+The system is a small web application for recording, searching and reporting injury cases at a hospital. It replaces paper registers with a searchable database. It uses **patient codes and optional patient names**, not real personally identifying details. The hospital name shown in the header and footer is configurable by an administrator under **Users & roles → Hospital settings**; the former affiliation line and demo-warning footer text were removed.
 
 ### 1.2 The main jobs
 
@@ -52,6 +52,7 @@ The system is a small web prototype for recording, searching and reporting injur
 6. **Run reports** with the same filters and download a CSV file.
 7. **Manage staff accounts** (admin only): create, edit, change role, disable, delete.
 8. **Manage roles** (admin only): create, edit and delete roles and choose which permissions they carry.
+9. **Set the hospital name** (admin only): choose the name displayed at the top and bottom of every page.
 
 ### 1.3 Roles and permissions
 
@@ -73,6 +74,7 @@ The five valid permission names are defined in `$permission_options` at the bott
 | Cases (`injury_cases`) | `create` — `case_form.php` | `view` — `cases.php`, `case_view.php`, `reports.php`, `export.php` | `create` — `case_form.php` | `delete` — `case_delete.php` |
 | Accounts (`users`) | `manage_users` — `users.php?tab=accounts&action=new` | `manage_users` — `users.php?tab=accounts` | `manage_users` — `users.php?tab=accounts&action=edit` (includes disable and password reset) | `manage_users` **and** `delete` — `users.php` |
 | Roles (`roles`) | `manage_users` — `users.php?tab=roles&action=new` | `manage_users` — `users.php?tab=roles` | `manage_users` — `users.php?tab=roles&action=edit` | `manage_users` **and** `delete` — `users.php` |
+| Hospital name (`app_settings`) | `manage_users` — `users.php?tab=settings` | shown on every page | `manage_users` — `users.php?tab=settings` | not applicable |
 
 Every write operation is:
 
@@ -155,7 +157,7 @@ Hospital Injury Surveillance System\
 ├── case_delete.php               Delete a case (POST, CSRF, delete permission)
 ├── reports.php                   Filtered report totals
 ├── export.php                    CSV download (permission: export)
-├── users.php                     Admin: Accounts and Roles tabs, full CRUD for both
+├── users.php                     Admin: Accounts, Roles and Hospital settings tabs
 ├── roles.php                     Compatibility redirect to users.php?tab=roles (no UI)
 ├── logout.php                    Ends the session
 ├── config.php                    Database connection settings
@@ -163,8 +165,8 @@ Hospital Injury Surveillance System\
 ├── includes\
 │   ├── common.php                Session, auth helpers, validation, filters, sequences
 │   ├── db.php                    PDO connection to PostgreSQL
-│   ├── header.php                Shared page header, navigation, flash messages
-│   └── footer.php                Shared footer and app.js include
+│   ├── header.php                Shared header, navigation, flash, hospital name
+│   └── footer.php                Shared footer (hospital name) and app.js include
 │
 ├── assets\
 │   ├── style.css                 All styling (plain institutional look)
@@ -176,6 +178,7 @@ Hospital Injury Surveillance System\
 ├── migration-add-patient-code.sql  Adds patient_code_seq to an older database
 ├── migration-add-delete-permission.sql  Adds the delete permission to admin
 ├── migration-fix-recorded-by-delete.sql Keeps cases when their recorder is deleted
+├── migration-add-settings.sql    Adds the editable hospital-name setting
 │
 ├── start-injury-surveillance.bat Starts/checks PostgreSQL and starts PHP
 ├── stop-injury-surveillance.bat  Stops only the PHP server
@@ -199,14 +202,14 @@ Hospital Injury Surveillance System\
 | --- | --- |
 | `config.php` | Returns an array with `host`, `port`, `dbname`, `user`, `password`. Change this first if the database moves. |
 | `includes/db.php` | Builds the DSN `pgsql:host=...;port=...;dbname=...`, creates `$pdo`, stops with an error page if connection fails. |
-| `includes/common.php` | The shared toolbox: `e()` (HTML escaping), `csrf_field()`, `check_csrf()`, `flash()`, `current_user()`, `can()`, `require_login()`, `require_permission()`, `options()`, `value_of()`, `valid_date()`, `read_filters()`, `case_filter_sql()`, `preview_case_reference()`, `preview_patient_code()`, and all the dropdown option arrays. |
+| `includes/common.php` | The shared toolbox: `e()` (HTML escaping), `csrf_field()`, `check_csrf()`, `flash()`, `current_user()`, `can()`, `require_login()`, `require_permission()`, `get_setting()` (reads `app_settings` with a safe fallback), `options()`, `value_of()`, `valid_date()`, `read_filters()`, `case_filter_sql()`, `preview_case_reference()`, `preview_patient_code()`, and all the dropdown option arrays. |
 | `case_form.php` | The largest and most important file. Handles both add and edit. It reads POST data, validates it, generates the reference and code with `nextval()`, and runs prepared `INSERT` or `UPDATE` statements. |
 | `case_delete.php` | Deletes one case. POST only, `require_permission('delete')`, CSRF check, prepared `DELETE`, then a flash message and redirect. Sequence numbers are not reused. |
 | `cases.php` | Builds a `SELECT` using `case_filter_sql()` and lists up to 100 newest matching cases, ordered by incident date. Shows Edit (if `create`) and Delete (if `delete`) actions. |
 | `reports.php` | Uses the same filters and runs `COUNT(*)`, `GROUP BY mechanism`, `GROUP BY outcome`, `GROUP BY classification`, and a monthly grouping with `to_char(incident_date, 'YYYY-MM')`. |
 | `export.php` | Same filters as reports, but outputs CSV with `fputcsv()`. Requires the `export` permission. |
-| `users.php` | The single administration page. Requires `manage_users`; `?tab=accounts` handles full account CRUD and `?tab=roles` handles full role CRUD. Delete additionally requires `delete`. All write actions are POST-only with CSRF and use distinct `action` values (`account_create/update/delete`, `role_create/update/delete`). Blocks self-delete, self-deactivation, moving yourself off `manage_users`, deleting the last admin and deleting a role in use. Passwords use `password_hash($password, PASSWORD_BCRYPT)`. |
-| `database.sql` | Drops and recreates `injury_cases`, `users`, `roles`, `case_ref_seq`, `patient_code_seq`, then inserts demo data. **Destructive.** `recorded_by` uses `ON DELETE SET NULL`. |
+| `users.php` | The single administration page. Requires `manage_users`; `?tab=accounts` handles full account CRUD, `?tab=roles` handles full role CRUD and `?tab=settings` saves the hospital name. Delete additionally requires `delete`. All write actions are POST-only with CSRF and use distinct `action` values (`account_create/update/delete`, `role_create/update/delete`, `settings_save`). Blocks self-delete, self-deactivation, moving yourself off `manage_users`, deleting the last admin and deleting a role in use. Passwords use `password_hash($password, PASSWORD_BCRYPT)`. |
+| `database.sql` | Drops and recreates `injury_cases`, `users`, `roles`, `app_settings`, `case_ref_seq`, `patient_code_seq`, then inserts demo data. **Destructive.** `recorded_by` uses `ON DELETE SET NULL`; `app_settings` holds the default hospital name. |
 | `migration-*.sql` | Non-destructive additions for databases created by older versions. Safe to run more than once. The start script applies any that are missing. |
 
 ---
@@ -328,6 +331,7 @@ For a brand-new computer, read **SETUP-NEW-PC.md** first — it covers installin
    - applies `migration-add-patient-code.sql` if `patient_code_seq` is missing;
    - applies `migration-add-delete-permission.sql` if admin lacks the `delete` permission;
    - applies `migration-fix-recorded-by-delete.sql` if case authorship is not `ON DELETE SET NULL`;
+   - applies `migration-add-settings.sql` if the `app_settings` table is missing;
    - checks whether something is already listening on port 8000; if so it leaves that server alone and prints "already listening";
    - otherwise starts PHP on `http://localhost:8000/` in a small window titled "HISS PHP server".
 4. Open `http://localhost:8000/` in a browser.
@@ -537,6 +541,15 @@ Valid permissions are `view`, `create`, `export`, `manage_users` and `delete`. T
 ### 6.15 Test a copy on another computer
 
 See **SETUP-NEW-PC.md**. It walks through installing PostgreSQL, copying the folder (remember `runtime\php`), configuring `config.php` and the batch files, starting the app, and a 13-step test covering all CRUD operations and role restrictions.
+
+### 6.16 Change the hospital name
+
+1. Sign in as admin and open **Users & roles → Hospital settings**.
+2. Enter the hospital name (2–100 characters) and click **Save hospital name**.
+3. The value is stored in `app_settings` under the key `hospital_name` with an UPSERT, so saving twice updates the same row.
+4. `includes/header.php` reads it with `get_setting()` on every request and shows it under "Injury Surveillance" in the top bar. `includes/footer.php` shows it as well. There is no need to sign out again.
+5. The former affiliation line and demo-warning footer line are gone. If you still see them, the browser is showing a cached page — refresh.
+6. If `app_settings` is missing on an older database, run `migration-add-settings.sql` or start the app — the start script applies it automatically. Until then `get_setting()` falls back to `General Hospital` instead of breaking the page.
 
 ---
 
@@ -761,6 +774,10 @@ roles
 users
   user_id, username, full_name, password_hash, role_id, active, created_at
   role_id  -> roles.role_id (RESTRICT: delete the role's accounts first)
+
+app_settings
+  setting_key, setting_value
+  'hospital_name' is editable on Users & roles -> Hospital settings
 
 injury_cases
   case_id, case_reference, incident_date, incident_time,

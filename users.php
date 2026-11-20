@@ -9,10 +9,12 @@ $page_title = 'Users and roles';
  * Administration lives on this one page:
  *   users.php?tab=accounts  staff accounts (default)
  *   users.php?tab=roles     roles and their permissions
+ *   users.php?tab=settings  hospital name shown in the page header
  * Every write is POST-only, CSRF-protected and permission-checked again here.
  */
 
-$tab = (string) ($_GET['tab'] ?? '') === 'roles' ? 'roles' : 'accounts';
+$requested_tab = (string) ($_GET['tab'] ?? '');
+$tab = in_array($requested_tab, ['accounts', 'roles', 'settings'], true) ? $requested_tab : 'accounts';
 $return_to = 'users.php?tab=' . $tab;
 
 $roles = $pdo->query('
@@ -31,6 +33,7 @@ $show_account_form = $tab === 'accounts' && $wants_form;
 $show_role_form = $tab === 'roles' && $wants_form;
 $form_account = [];
 $form_role = [];
+$form_settings = ['hospital_name' => get_setting($pdo, 'hospital_name', 'General Hospital')];
 $errors = [];
 
 if ($account_editing) {
@@ -59,7 +62,8 @@ if ($role_editing) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     check_csrf();
 
-    $tab = (string) ($_POST['tab'] ?? 'accounts') === 'roles' ? 'roles' : 'accounts';
+    $posted_tab = (string) ($_POST['tab'] ?? 'accounts');
+    $tab = in_array($posted_tab, ['accounts', 'roles', 'settings'], true) ? $posted_tab : 'accounts';
     $return_to = 'users.php?tab=' . $tab;
     $post_action = (string) ($_POST['action'] ?? '');
 
@@ -349,6 +353,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
     }
+
+    /* ---------------- Update the hospital name ---------------- */
+    if ($post_action === 'settings_save') {
+        $tab = 'settings';
+        $return_to = 'users.php?tab=settings';
+
+        $hospital_name = trim((string) ($_POST['hospital_name'] ?? ''));
+        $form_settings['hospital_name'] = $hospital_name;
+
+        if (mb_strlen($hospital_name) < 2 || mb_strlen($hospital_name) > 100) {
+            $errors[] = 'Enter the hospital name (2 to 100 characters).';
+        }
+
+        if (!$errors) {
+            try {
+                $stmt = $pdo->prepare('
+                    INSERT INTO app_settings (setting_key, setting_value)
+                    VALUES (\'hospital_name\', :name)
+                    ON CONFLICT (setting_key) DO UPDATE SET setting_value = EXCLUDED.setting_value
+                ');
+                $stmt->execute([':name' => $hospital_name]);
+                flash('success', 'Hospital name updated. It now appears at the top of every page.');
+                redirect($return_to);
+            } catch (PDOException $e) {
+                error_log('Settings save failed: ' . $e->getMessage());
+                $errors[] = 'The hospital name could not be saved. Please try again.';
+            }
+        }
+    }
 }
 
 $users = $pdo->query('
@@ -365,12 +398,13 @@ include __DIR__ . '/includes/header.php';
 
 <div class="pagehead">
   <h1>Users and roles</h1>
-  <p class="muted">One place to manage staff accounts, roles and what each role is allowed to do.</p>
+  <p class="muted">One place to manage staff accounts, roles, permissions and the hospital name shown in the header.</p>
 </div>
 
 <nav class="tabs" aria-label="Administration sections">
   <a class="tab<?= $tab === 'accounts' ? ' active' : '' ?>" href="users.php?tab=accounts">Accounts</a>
   <a class="tab<?= $tab === 'roles' ? ' active' : '' ?>" href="users.php?tab=roles">Roles &amp; permissions</a>
+  <a class="tab<?= $tab === 'settings' ? ' active' : '' ?>" href="users.php?tab=settings">Hospital settings</a>
 </nav>
 
 <?php if ($tab === 'accounts'): ?>
@@ -486,7 +520,7 @@ include __DIR__ . '/includes/header.php';
     <p class="fineprint">Administrators can create, edit, reset passwords for, disable and delete other accounts. You cannot delete yourself or the last administrator.</p>
   </section>
 
-<?php else: ?>
+<?php elseif ($tab === 'roles'): ?>
 
   <?php if ($show_role_form): ?>
     <section class="panel">
@@ -581,6 +615,36 @@ include __DIR__ . '/includes/header.php';
       </table>
     </div>
     <p class="fineprint">A role with accounts assigned to it cannot be deleted. Move those accounts to the Accounts tab first.</p>
+  </section>
+
+<?php else: ?>
+
+  <section class="panel">
+    <h2>Hospital name</h2>
+
+    <?php if ($errors): ?>
+      <div class="notice error">
+        <ul><?php foreach ($errors as $error): ?><li><?= e($error) ?></li><?php endforeach; ?></ul>
+      </div>
+    <?php endif; ?>
+
+    <form method="post" action="users.php">
+      <?= csrf_field() ?>
+      <input type="hidden" name="tab" value="settings">
+      <input type="hidden" name="action" value="settings_save">
+
+      <div class="field">
+        <label for="hospital_name">Name shown in the header *</label>
+        <input type="text" id="hospital_name" name="hospital_name" maxlength="100" required
+               value="<?= e($form_settings['hospital_name']) ?>">
+        <small>This name appears on every page, in the page header and footer.</small>
+      </div>
+
+      <p>
+        <button type="submit" class="btn primary">Save hospital name</button>
+      </p>
+    </form>
+    <p class="fineprint">Only administrators can change this setting. The change takes effect on the next page load.</p>
   </section>
 
 <?php endif; ?>

@@ -1,7 +1,7 @@
 </div><!-- /page -->
 
 <div class="wrap footer">
-  Hospital Injury Surveillance &middot; Prototype &middot; Demo data only. Do not enter real patient details.
+  <?= e($hospital_name ?? 'General Hospital') ?> &middot; Injury Surveillance
 </div>
 
 <script src="assets/app.js"></script>

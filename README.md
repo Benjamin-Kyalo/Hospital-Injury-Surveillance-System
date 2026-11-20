@@ -39,7 +39,8 @@ If you change the PostgreSQL `postgres` password, update both `config.php` and t
 - Case references (`INJ-2026-0016`) and patient codes (`PT-1016`) are assigned automatically from PostgreSQL sequences. The New Case form shows both next values as read-only fields; editing a case shows its existing values, which never change. Deleting a case does not reuse its numbers.
 - Dashboard with basic counts and summaries.
 - Reports with filters and a CSV download for admin and records users.
-- **Users & roles — one admin page with two tabs** at `users.php`: admins can create, view, edit, disable and delete other staff accounts, and create, view, edit and delete roles and their permissions. No separate Roles page or menu item.
+- **Users & roles — one admin page with three tabs** at `users.php`: admins can manage staff accounts, manage roles and permissions, and set the **hospital name** shown at the top of every page. No separate Roles page or menu item.
+- The old affiliation and demo-warning notices were removed from the layout. The header and footer now show the hospital name you set under **Users & roles → Hospital settings** (default: `General Hospital`).
 - Account safety: you cannot delete yourself, deactivate yourself, move yourself to a role without `manage_users`, or delete the last administrator. Cases recorded by a deleted account are kept, with the recorder shown as "unknown user".
 - Role safety: a role that still has accounts cannot be deleted, and you cannot remove `manage_users` from your own role. Users must sign out and back in after their role's permissions change.
 - Every change is protected: POST-only actions, CSRF tokens, prepared statements, and permission checks on the server.
@@ -51,6 +52,7 @@ If you change the PostgreSQL `postgres` password, update both `config.php` and t
 | Cases | `create` (admin, officer) | `view` (all roles) | `create` (admin, officer) | `delete` (admin by default) |
 | Accounts | `manage_users` (admin) | `manage_users` (admin) | `manage_users` (admin) | `manage_users` + `delete` (admin) |
 | Roles | `manage_users` (admin) | `manage_users` (admin) | `manage_users` (admin) | `manage_users` + `delete` (admin) |
+| Hospital name setting | `manage_users` (admin) | shown on every page | `manage_users` (admin) | not applicable |
 
 Open `users.php` and use the **Accounts** tab for people and the **Roles & permissions** tab for their access. Permission names are stored in the `roles.permissions` column and can be changed there or in `database.sql`.
 
@@ -64,6 +66,7 @@ migration-add-patient-name.sql       adds the name field without removing existi
 migration-add-patient-code.sql       adds the patient code sequence to an existing database
 migration-add-delete-permission.sql  adds the delete permission to the admin role
 migration-fix-recorded-by-delete.sql keeps cases when their recorder is deleted
+migration-add-settings.sql       adds the editable hospital-name setting
 index.php           sign-in page
 dashboard.php       summary counts
 cases.php           search and list

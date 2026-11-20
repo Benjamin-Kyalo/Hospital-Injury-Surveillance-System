@@ -169,7 +169,9 @@ Work through this short test on the new PC. It also proves that Create, Read, Up
 | 12 | Sign out, sign in as `viewer1` / `View@123`. | No New case, Users & roles or Delete links. |
 | 13 | Run `.\stop-injury-surveillance.bat`, then refresh the browser. | The site no longer loads — only PHP was stopped. |
 
-If all 13 pass, the copy is working. Delete any test records you left behind.
+Also check the hospital name: open **Users & roles → Hospital settings**, change the name, confirm it appears in the header and footer on the next page, then set it back to the name you want. The default is `General Hospital`.
+
+If all 13 checks plus the hospital-name check pass, the copy is working. Delete any test records you left behind.
 
 ---
 
@@ -205,6 +207,7 @@ After a PC restart, PostgreSQL normally starts with Windows but PHP does not —
 | Browser shows `localhost refused to connect` | PHP not running, or different port | Run the start script; check the `WEBPORT` value. |
 | White page / PHP error text | Missing PHP extension or syntax error | Run `& ".\runtime\php\php.exe" -m`; run `& ".\runtime\php\php.exe" -l <file>`. |
 | Password prompt from `psql` | Batch scripts use `-w` and rely on `PGPASSWORD` | Set `$env:PGPASSWORD = "1234"` in PowerShell or fix the batch files. |
+| Header shows "General Hospital" | Hospital name has not been set, or `app_settings` is missing | Sign in as admin, use **Users & roles → Hospital settings**; if the table is missing, run the start script or `migration-add-settings.sql`. |
 | Delete links missing | Account lacks the `delete` permission | Sign in as admin, check the **Roles & permissions** tab, then sign out and back in. |
 | Search finds nothing | Filters still active | Click **Clear** on Cases or Reports. |
 
@@ -259,4 +262,4 @@ $pg = "C:\Program Files\PostgreSQL\18\bin"
 
 Expected counts: `16` cases and `4` users after step 2. Press `Ctrl+C` in that window to stop PHP.
 
-`database.sql` already contains the patient name column, both sequences, the `delete` permission and the `ON DELETE SET NULL` link. The `migration-*.sql` files are only needed for databases created by an older version of the project; the start script applies them automatically when necessary.
+`database.sql` already contains the patient name column, both sequences, the `delete` permission, the `ON DELETE SET NULL` link and the `app_settings` table with the default hospital name. The `migration-*.sql` files are only needed for databases created by an older version of the project; the start script applies them automatically when necessary.

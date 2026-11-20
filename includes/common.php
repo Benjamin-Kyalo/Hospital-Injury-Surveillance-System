@@ -74,6 +74,7 @@ function require_login(): void
 
 function require_permission(string $permission): void
 {
+    global $pdo;
     require_login();
     if (!can($permission)) {
         http_response_code(403);
@@ -82,6 +83,20 @@ function require_permission(string $permission): void
         echo '<div class="notice error">You do not have permission to use that page. Ask the administrator if you think this is a mistake.</div>';
         include __DIR__ . '/footer.php';
         exit;
+    }
+}
+
+// Reads a value from the app_settings table. Falls back safely on older databases
+// that have not had the settings migration applied yet.
+function get_setting(PDO $db, string $key, string $default = ''): string
+{
+    try {
+        $stmt = $db->prepare('SELECT setting_value FROM app_settings WHERE setting_key = :key');
+        $stmt->execute([':key' => $key]);
+        $value = $stmt->fetchColumn();
+        return ($value === false || $value === '') ? $default : (string) $value;
+    } catch (PDOException $e) {
+        return $default;
     }
 }
 
