@@ -33,7 +33,7 @@ $show_account_form = $tab === 'accounts' && $wants_form;
 $show_role_form = $tab === 'roles' && $wants_form;
 $form_account = [];
 $form_role = [];
-$form_settings = ['hospital_name' => get_setting($pdo, 'hospital_name', 'General Hospital')];
+$form_settings = get_settings($pdo, hospital_defaults());
 $errors = [];
 
 if ($account_editing) {
@@ -354,31 +354,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    /* ---------------- Update the hospital name ---------------- */
+    /* ---------------- Update the hospital profile ---------------- */
     if ($post_action === 'settings_save') {
         $tab = 'settings';
         $return_to = 'users.php?tab=settings';
 
-        $hospital_name = trim((string) ($_POST['hospital_name'] ?? ''));
-        $form_settings['hospital_name'] = $hospital_name;
+        $setting_rules = [
+            'hospital_name'    => ['label' => 'Hospital name', 'max' => 100],
+            'hospital_phone'   => ['label' => 'Phone number', 'max' => 30],
+            'hospital_email'   => ['label' => 'Email address', 'max' => 100],
+            'hospital_address' => ['label' => 'Physical address', 'max' => 200],
+        ];
 
-        if (mb_strlen($hospital_name) < 2 || mb_strlen($hospital_name) > 100) {
+        foreach ($setting_rules as $key => $rule) {
+            $form_settings[$key] = trim((string) ($_POST[$key] ?? ''));
+        }
+
+        if (mb_strlen($form_settings['hospital_name']) < 2 || mb_strlen($form_settings['hospital_name']) > 100) {
             $errors[] = 'Enter the hospital name (2 to 100 characters).';
+        }
+        foreach ($setting_rules as $key => $rule) {
+            if (mb_strlen($form_settings[$key]) > $rule['max']) {
+                $errors[] = $rule['label'] . ' is too long (maximum ' . $rule['max'] . ' characters).';
+            }
+        }
+        if ($form_settings['hospital_email'] !== ''
+            && !filter_var($form_settings['hospital_email'], FILTER_VALIDATE_EMAIL)) {
+            $errors[] = 'Enter a valid email address, or leave it blank.';
         }
 
         if (!$errors) {
             try {
                 $stmt = $pdo->prepare('
                     INSERT INTO app_settings (setting_key, setting_value)
-                    VALUES (\'hospital_name\', :name)
+                    VALUES (:key, :value)
                     ON CONFLICT (setting_key) DO UPDATE SET setting_value = EXCLUDED.setting_value
                 ');
-                $stmt->execute([':name' => $hospital_name]);
-                flash('success', 'Hospital name updated. It now appears at the top of every page.');
+                foreach ($form_settings as $key => $value) {
+                    $stmt->execute([':key' => $key, ':value' => $value]);
+                }
+                flash('success', 'Hospital details updated. They now appear in the header and footer.');
                 redirect($return_to);
             } catch (PDOException $e) {
                 error_log('Settings save failed: ' . $e->getMessage());
-                $errors[] = 'The hospital name could not be saved. Please try again.';
+                $errors[] = 'The hospital details could not be saved. Please try again.';
             }
         }
     }
@@ -620,7 +639,7 @@ include __DIR__ . '/includes/header.php';
 <?php else: ?>
 
   <section class="panel">
-    <h2>Hospital name</h2>
+    <h2>Hospital details</h2>
 
     <?php if ($errors): ?>
       <div class="notice error">
@@ -634,17 +653,37 @@ include __DIR__ . '/includes/header.php';
       <input type="hidden" name="action" value="settings_save">
 
       <div class="field">
-        <label for="hospital_name">Name shown in the header *</label>
+        <label for="hospital_name">Hospital name *</label>
         <input type="text" id="hospital_name" name="hospital_name" maxlength="100" required
                value="<?= e($form_settings['hospital_name']) ?>">
-        <small>This name appears on every page, in the page header and footer.</small>
+        <small>Shown in the header and footer on every page, including the sign-in page.</small>
+      </div>
+
+      <div class="field">
+        <label for="hospital_phone">Phone number</label>
+        <input type="text" id="hospital_phone" name="hospital_phone" maxlength="30"
+               value="<?= e($form_settings['hospital_phone']) ?>">
+        <small>Optional. Shown in the footer when filled in.</small>
+      </div>
+
+      <div class="field">
+        <label for="hospital_email">Email address</label>
+        <input type="email" id="hospital_email" name="hospital_email" maxlength="100"
+               value="<?= e($form_settings['hospital_email']) ?>">
+        <small>Optional. Shown in the footer when filled in.</small>
+      </div>
+
+      <div class="field">
+        <label for="hospital_address">Physical address</label>
+        <textarea id="hospital_address" name="hospital_address" rows="3" maxlength="200"><?= e($form_settings['hospital_address']) ?></textarea>
+        <small>Optional. Shown in the footer when filled in.</small>
       </div>
 
       <p>
-        <button type="submit" class="btn primary">Save hospital name</button>
+        <button type="submit" class="btn primary">Save hospital details</button>
       </p>
     </form>
-    <p class="fineprint">Only administrators can change this setting. The change takes effect on the next page load.</p>
+    <p class="fineprint">Only administrators can change these details. Changes appear on the next page load.</p>
   </section>
 
 <?php endif; ?>

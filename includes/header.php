@@ -2,7 +2,10 @@
 $page_title = $page_title ?? 'Injury Surveillance';
 $user = current_user();
 $current_page = basename($_SERVER['PHP_SELF']);
-$hospital_name = isset($pdo) ? get_setting($pdo, 'hospital_name', 'General Hospital') : 'General Hospital';
+$hospital_settings = isset($pdo)
+    ? get_settings($pdo, hospital_defaults())
+    : hospital_defaults();
+$hospital_name = $hospital_settings['hospital_name'];
 ?>
 <!doctype html>
 <html lang="en">

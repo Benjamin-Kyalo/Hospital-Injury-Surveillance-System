@@ -71,11 +71,9 @@ if not errorlevel 1 (
     "%PGBIN%\psql.exe" -h 127.0.0.1 -p %PGPORT% -U postgres -d HISS -w -f "%APP%migration-fix-recorded-by-delete.sql"
 )
 
-"%PGBIN%\psql.exe" -h 127.0.0.1 -p %PGPORT% -U postgres -d HISS -w -tAc "select count(*) from pg_tables where schemaname='public' and tablename='app_settings'" | findstr /r /c:"^0$" >nul
-if not errorlevel 1 (
-    echo Adding the editable settings table ...
-    "%PGBIN%\psql.exe" -h 127.0.0.1 -p %PGPORT% -U postgres -d HISS -w -f "%APP%migration-add-settings.sql"
-)
+rem This migration is idempotent (CREATE TABLE IF NOT EXISTS + INSERT ... ON CONFLICT DO NOTHING),
+rem so it also adds any new settings to databases that already have the older settings table.
+"%PGBIN%\psql.exe" -h 127.0.0.1 -p %PGPORT% -U postgres -d HISS -w -q -f "%APP%migration-add-settings.sql"
 
 netstat -ano | findstr /c:"127.0.0.1:%WEBPORT%" | findstr /c:"LISTENING" >nul
 if not errorlevel 1 (

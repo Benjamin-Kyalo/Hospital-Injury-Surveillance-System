@@ -100,6 +100,35 @@ function get_setting(PDO $db, string $key, string $default = ''): string
     }
 }
 
+// Default values for the editable hospital profile.
+function hospital_defaults(): array
+{
+    return [
+        'hospital_name'    => 'General Hospital',
+        'hospital_phone'   => '',
+        'hospital_email'   => '',
+        'hospital_address' => '',
+    ];
+}
+
+// Reads several settings at once, keeping the defaults for missing or blank values.
+function get_settings(PDO $db, array $defaults): array
+{
+    $settings = $defaults;
+    try {
+        $stmt = $db->query('SELECT setting_key, setting_value FROM app_settings');
+        foreach ($stmt->fetchAll() as $row) {
+            $key = $row['setting_key'];
+            if (array_key_exists($key, $settings) && $row['setting_value'] !== '') {
+                $settings[$key] = $row['setting_value'];
+            }
+        }
+    } catch (PDOException $e) {
+        // Older databases may not have the settings table yet.
+    }
+    return $settings;
+}
+
 function options(array $items, $selected = ''): string
 {
     $html = '';

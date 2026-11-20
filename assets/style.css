@@ -405,6 +405,10 @@ small {
     text-align: center;
 }
 
+.footer-contact {
+    margin-top: 4px;
+}
+
 @media (max-width: 820px) {
     .twocol, .formgrid, .filters, .permgrid { grid-template-columns: 1fr; }
     .tiles { grid-template-columns: 1fr 1fr; }

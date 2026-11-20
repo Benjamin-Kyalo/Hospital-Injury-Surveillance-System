@@ -98,7 +98,7 @@ $pg = "C:\Program Files\PostgreSQL\18\bin"
 | `migration-add-patient-code.sql` | `patient_code_seq`, starting after the highest existing code |
 | `migration-add-delete-permission.sql` | `delete` permission for the built-in admin role |
 | `migration-fix-recorded-by-delete.sql` | `ON DELETE SET NULL` on `injury_cases.recorded_by`, so deleting an account keeps its cases |
-| `migration-add-settings.sql` | `app_settings` table with the editable `hospital_name` shown in the header/footer |
+| `migration-add-settings.sql` | `app_settings` table with the editable hospital name, phone, email and address shown in the header/footer |
 
 After a permissions change, affected users must sign out and back in.
 

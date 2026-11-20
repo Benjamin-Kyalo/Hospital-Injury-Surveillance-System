@@ -65,7 +65,6 @@ include __DIR__ . '/includes/header.php';
     <button type="submit" class="btn primary full">Sign in</button>
   </form>
 
-  <p class="fineprint">Demo accounts are listed in the README file. This system holds sample data only.</p>
 </div>
 
 <?php include __DIR__ . '/includes/footer.php'; ?>

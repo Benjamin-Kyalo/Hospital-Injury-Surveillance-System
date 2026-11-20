@@ -21,7 +21,11 @@ CREATE TABLE app_settings (
     setting_key   VARCHAR(50) PRIMARY KEY,
     setting_value TEXT NOT NULL
 );
-INSERT INTO app_settings (setting_key, setting_value) VALUES ('hospital_name', 'General Hospital');
+INSERT INTO app_settings (setting_key, setting_value) VALUES
+    ('hospital_name', 'General Hospital'),
+    ('hospital_phone', ''),
+    ('hospital_email', ''),
+    ('hospital_address', '');
 
 CREATE TABLE users (
     user_id      SERIAL PRIMARY KEY,
